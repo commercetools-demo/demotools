@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "name": "demotools",
+  "dependencies" : {
+    "csv-writer" : "^1.6.0",
+    "dotenv" : "^8.2.0",
+    "@commercetools/api-request-builder" : "^5.6.0",
+    "@commercetools/sdk-client" : "^2.1.2",
+    "@commercetools/sdk-middleware-auth" : "^6.1.3",
+    "@commercetools/sdk-middleware-http" : "^6.0.6",
+    "lodash" : "^4.17.15",
+    "node-fetch" : "^2.6.0",
+    "xlsx" : "^0.16.0",
+    "csv-parse": "^4.10.1"
+  }
+}
