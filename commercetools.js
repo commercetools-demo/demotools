@@ -45,79 +45,123 @@ const importClient = createClient({
 
 const requestBuilder = createRequestBuilder({projectKey});
 
-async function exec(params) {
+
+/* Execute a call to commercetools.   
+Takes the same arguments as the JavaScript SDK client 'execute' method:
+https://commercetools.github.io/nodejs/sdk/api/sdkClient.html#executerequest
+
+with a few additional parameters:
+verbose (true or false) - spit out additional debug information
+allow404 - don't throw an error if not found, just return null
+*/
+async function execute(params) {
   if(params.verbose)
     verbose = params.verbose;
 
-  let result;
   if(verbose)
     console.log(params.method,params.uri);
-  try {
-    result = await client.execute(params);
-    if(verbose) {
-      console.log(JSON.stringify(result,null,2));
-    }
-    if(result.statusCode == 200 || result.statusCode == 201) {
-      if(verbose)
-        console.log('OK');
-    }
-  } catch(err) {
-    // a 404 is not an error if our caller allows it
+  
+  let result = await client.execute(params)
+  .catch(err => {
     if(err.statusCode==404 && params.allow404) {
       console.log('not found');
     } else { 
       console.log('ERROR',JSON.stringify(err,null,2));
     }
+    return null;
+  });
+
+  if(!result) {
+    return null;
+  }
+
+  if(verbose) {
+    console.log(JSON.stringify(result,null,2));
+  }
+  if(result.statusCode == 200 || result.statusCode == 201) {
+    if(verbose)
+      console.log('OK');
   }
   return result;
 }
 
-// Get a lot of data.  This approach pulls a max of 10,000 items.
+async function exec(params) {
+  console.log('deprecated -- use execute instead');
+  return execute(params);
+}
+
+/* 
+Issue a query that will potentially return large amounts of data
+Pass: same parameters as a Query call.
+
+If it makes sense to do so, we can read from a cache 
+(if doing testing, and running the same query repeatedly, for example)
+The cache argument needs to look like this:
+{dir: <cacheDir>, filename: <cacheFilename> }
+
+Example:
+   const dt = require('@cboyke/demotools');
+
+  let products = await dt.largeQuery({
+    uri: dt.requestBuilder.products.build(),
+    cache: {dir: 'cache', filename: 'products.json'}
+  });
+*/
 async function largeQuery(args) {
-  let results;
+  if(args.verbose)
+    verbose = args.verbose;
+  
+  let results = [];
 
   if('cache' in args) {
-    results = readFromCache(args.cache);
-    if(results)
-      return results;
+    let resCache = readFromCache(args.cache);
+    if(resCache)
+      return resCache;
   }
-  results = [];
 
-  let max = 9999;
+  let max = 999999;
   if('max' in args) {
     max = args.max
   }
-  let offset = 0;
   let limit = 500;
   if(max < limit) {
     limit = max;
   }
   
   let done = false;
+  let lastId=null;
+  let param;
   while (!done) {
+    if(lastId ==null) 
+      param=`withTotal=false&limit=${limit}&sort=id+asc`;
+    else
+      param=`withTotal=false&limit=${limit}&sort=id+asc&where=id>"${lastId}"`
+
     let uri = args.uri;
     if(uri.includes('?'))
       uri += '&'
     else
       uri += '?'
-    uri += `offset=${offset}&limit=${limit}`;
-    console.log(uri);
-    let result = await exec({
+    uri += param;
+    let result = await execute({
       uri: uri,
       method: "GET",
+      verbose: verbose
     });
     if (result) {
-      results = results.concat(result.body.results);
+      if(result.body.count) {
+        results = results.concat(result.body.results);
+        console.log('Fetched',results.length,'items');
+        lastId = result.body.results[result.body.count-1].id;
+      }
       if (result.body.count < limit) {
         done = true;
       }
       if(results.length >= max) {
         done = true;
       }
-      offset += limit;
     }
   }
-  console.log('Found',results.length,'items');
 
   if('cache' in args) {
     writeToCache(args.cache,results);
@@ -131,5 +175,6 @@ module.exports = {
   importClient,
   requestBuilder,
   exec,
+  execute,
   largeQuery
 }

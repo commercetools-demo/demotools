@@ -5,14 +5,13 @@ Param is a 'cache' object of form
 {
   dir: <directory>
   filename: <filename>
+  verbose: true or false (optional)
 }
 TODO: add timeouts & format options (JSON, etc.)
 */
-let verbose=true;
-
 function readFromCache(cache) {
   let fullPath = cache.dir + '/' + cache.filename;
-  if(verbose)
+  if(cache.verbose)
     console.log('looking in cache:',fullPath)
   if(fs.existsSync(fullPath)) {
     console.log(`Fetching ${fullPath} from cache`);
@@ -20,7 +19,7 @@ function readFromCache(cache) {
     console.log('Found')
     return JSON.parse(data);
   }
-  if(verbose)
+  if(cache.verbose)
     console.log('not found');
   return undefined;
 }
@@ -30,7 +29,7 @@ function writeToCache(cache,data) {
     fs.mkdirSync(cache.dir, {recursive: true} );
   }
   let fullPath = cache.dir + '/' + cache.filename;
-  if(verbose)
+  if(cache.verbose)
     console.log('Writing to cache:',fullPath);
   fs.writeFileSync(cache.dir + '/' + cache.filename, JSON.stringify(data,null,2));
 }

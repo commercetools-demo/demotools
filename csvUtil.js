@@ -1,18 +1,20 @@
+
 const fs = require('fs');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const parse = require('csv-parse/lib/sync');
 
-let verbose=false;
-
 // Read CSV file into array of objects, where key is column header
-function readCsv(filename) {
+function readCsv(filename,delimiter=',',verbose=false) {
+  console.log('reading',filename,'delimiter:',delimiter);
   const input = fs.readFileSync(filename,'utf-8');
   const records = parse(input, {
     columns: true,
-    skip_empty_lines: true
+    skip_empty_lines: true,
+    delimiter: delimiter
   }) 
   if(verbose)
     console.log(JSON.stringify(records,null,2));
+  console.log('read',records.length,'rows');
   return records;
 }
 

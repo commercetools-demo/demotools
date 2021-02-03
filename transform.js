@@ -4,15 +4,16 @@
 const fs = require('fs');
 const _ = require('lodash');
 
-let verbose = true;
-
-function mapFields(mapperList,input,output) {
+function mapFields(mapperList,input,output,initDebug=false) {
   for(let mapper of mapperList) {
-    let value;
-    if(Array.isArray(mapper.src)) {
-      value = getConcatValue(input,mapper.src,mapper.concat);
+    let debug = initDebug | mapper.debug;
+    let value = null;
+    let src=mapper.src ? mapper.src : mapper.name;
+    let dest=mapper.dest ? mapper.dest : mapper.name;
+    if(Array.isArray(src)) {
+      value = getConcatValue(input,src,mapper.concat);
     } else {
-      value = getValue(input,mapper.src);
+      value = getValue(input,src);
     }
     let type = typeof(value);
     if(type == 'number' || !_.isEmpty(value)) {
@@ -25,8 +26,8 @@ function mapFields(mapperList,input,output) {
               centAmount: parseInt(parseFloat(value)*100)
             }
           }];
-          if(verbose)
-            console.log('price-type',value);
+          if(debug)
+            console.debug('price-type',value);
           break;
         case 'price2':
             value=[{
@@ -35,15 +36,15 @@ function mapFields(mapperList,input,output) {
                 centAmount: parseInt(value.substr(4))
               }
             }];
-            if(verbose)
-              console.log('price-type',value);
+            if(debug)
+              console.debug('price-type',value);
             break;
         case 'number':
           value=parseFloat(value);
           break;
 
         case 'boolean':
-          value = (value.toLowerCase==='true');
+          value = (value.toLowerCase==='true' || value=='1');
           break;  
         case 'images':
           let images = [];
@@ -52,7 +53,7 @@ function mapFields(mapperList,input,output) {
 
           for(let v of value) {   
             let url = v;
-            if('element' in m)   
+            if('element' in mapper)   
               url = getValue(v,mapper.element);    
             let image = {
               url: url,
@@ -86,8 +87,8 @@ function mapFields(mapperList,input,output) {
         value = localeValue;
       }
 
-      if(Array.isArray(mapper.dest)) {
-        mapper.dest.forEach(d => {output[d]=value});
+      if(Array.isArray(dest)) {
+        dest.forEach(d => {output[d]=value});
       } else {
         if(mapper.type=='attr') {
           if(!('attributes' in output)) {
@@ -99,17 +100,21 @@ function mapFields(mapperList,input,output) {
             value = value[0].value;
           }
           output.attributes.push({
-            name: mapper.dest,
+            name: dest,
             value: value
           });
         } else if (mapper.type=='array') {
-          output[mapper.dest] = [ value ];
+          output[dest] = [ value ];
         } else {
-          output[mapper.dest] = value;
+          if(value == null && mapper.convert == 'number') {
+            // Don't set a value for numbers that have no value, as that's not the same as zero!
+          } else {
+            output[dest] = value;
+          }
         }
 
-        if(verbose) {
-          console.log(mapper.src,'==>',mapper.dest,value);
+        if(debug) {
+          console.debug(src,'==>',dest,value);
         }
       }
     }
@@ -146,16 +151,20 @@ function getValue(input,src) {
   return value;
 }
 
-function writeJSON(dir,filename,data) {
+function writeJSON(dir,filename,data,indent=2) {
   if (!fs.existsSync(dir))
     fs.mkdirSync(dir, { recursive: true });
-  let j = JSON.stringify(data,null,2);
+  let j = JSON.stringify(data,null,indent);
   filename=dir+'/'+filename;
   console.log('writing',filename);
   fs.writeFileSync(filename,j, 'utf8');
 }
 
 function readJSON(filename) {
+  if(!filename) {
+    console.error('No filename passed to readJSON -- exiting');
+    process.exit(1);
+  }
   console.log('reading',filename);
   let data = fs.readFileSync(filename,'utf8');
   console.log('file size',data.length);
@@ -166,11 +175,13 @@ function readJSON(filename) {
 function inspect(config,filename,data) {
   if(config.inspect) {
     if(config.inspect.enabled) {
-      let dir = config.inspect.dir;
-      writeJSON(config.inspect.dir,filename,data);
+      if(filename) {
+        writeJSON(config.inspect.dir,filename,data);
+      } else {
+        console.error('Inspect filename undefined');
+      }
     } else {
-      if(verbose)
-        console.log('inspect disabled');
+      console.log('inspect disabled');
     }
   } else {
     console.warn("No inspection information found in configuration file");

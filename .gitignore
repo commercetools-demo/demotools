@@ -5,6 +5,8 @@ dist/
 env/
 output/
 
+# yarn
+package-lock.json
 
 # local env files
 .env.local
