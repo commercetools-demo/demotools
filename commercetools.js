@@ -4,9 +4,11 @@ const { createRequestBuilder } = require('@commercetools/api-request-builder');
 const { createClient } = require('@commercetools/sdk-client')
 const { createAuthMiddlewareForClientCredentialsFlow } = require('@commercetools/sdk-middleware-auth')
 const { createHttpMiddleware } = require('@commercetools/sdk-middleware-http')
+const { ApiRoot,executeRequest, createExecutorFromMiddlewares } = require('@commercetools/importapi-sdk');
 const fetch = require('node-fetch')
 const { readFromCache, writeToCache } = require('./cache');
 
+const IMPORT_HOST='https://import.us-central1.gcp.commercetools.com';
 
 // Pull connection params from .env in '/env' folder next to the caller's dir.
 require('dotenv').config({path : process.env.ENV_PATH || '../env/.env'});
@@ -30,20 +32,29 @@ const httpMiddleware = createHttpMiddleware({
     fetch,
 })
 
-const importMiddleware = createHttpMiddleware({
-  host: 'https://import.us-central1.gcp.commercetools.com',
-  fetch,
-})
 
 const client = createClient({
     middlewares: [authMiddleware, httpMiddleware],
-})
+});
+
+const requestBuilder = createRequestBuilder({projectKey});
+
+/* For import API */
+const importMiddleware = createHttpMiddleware({
+  host: IMPORT_HOST,
+  fetch,
+});
 
 const importClient = createClient({
   middlewares: [authMiddleware, importMiddleware],
-})
+});
 
-const requestBuilder = createRequestBuilder({projectKey});
+const executor = createExecutorFromMiddlewares(importClient.execute);
+
+const importApiRoot = new ApiRoot({
+  executeRequest: executor,
+  baseUri: IMPORT_HOST,
+}).withProjectKeyValue({ projectKey })
 
 
 /* Execute a call to commercetools.   
@@ -51,7 +62,7 @@ Takes the same arguments as the JavaScript SDK client 'execute' method:
 https://commercetools.github.io/nodejs/sdk/api/sdkClient.html#executerequest
 
 with a few additional parameters:
-verbose (true or false) - spit out additional debug information
+verbose: true - display additional debug information
 allow404 - don't throw an error if not found, just return null
 */
 async function execute(params) {
@@ -61,16 +72,18 @@ async function execute(params) {
   if(verbose)
     console.log(params.method,params.uri);
   
-  let result = await client.execute(params)
+  let result = null;
+  
+  result = await client.execute(params)
   .catch(err => {
     if(err.statusCode==404 && params.allow404) {
       console.log('not found');
     } else { 
-      console.log('ERROR',JSON.stringify(err,null,2));
+      logError(err);
     }
     return null;
   });
-
+  
   if(!result) {
     return null;
   }
@@ -83,6 +96,10 @@ async function execute(params) {
       console.log('OK');
   }
   return result;
+}
+
+function logError(err) {
+  console.log('ERROR',JSON.stringify(err,null,2));
 }
 
 async function exec(params) {
@@ -171,10 +188,8 @@ async function largeQuery(args) {
 }
 
 module.exports = {
-  client,
-  importClient,
   requestBuilder,
-  exec,
   execute,
-  largeQuery
+  largeQuery,
+  importApiRoot
 }

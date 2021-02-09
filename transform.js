@@ -19,6 +19,14 @@ function mapFields(mapperList,input,output,initDebug=false) {
     if(type == 'number' || !_.isEmpty(value)) {
     
       switch(mapper.convert) {
+        case 'category':
+          value=[{
+            key: value,
+            typeId: 'category'
+          }];
+          if(debug)
+            console.debug('price-type',value);
+          break;
         case 'price':
           value=[{
             value: {
@@ -151,7 +159,7 @@ function getValue(input,src) {
   return value;
 }
 
-function writeJSON(dir,filename,data,indent=2) {
+function writeJSON(dir,filename,data,indent=1) {
   if (!fs.existsSync(dir))
     fs.mkdirSync(dir, { recursive: true });
   let j = JSON.stringify(data,null,indent);
