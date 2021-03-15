@@ -61,8 +61,9 @@ If it makes sense to do so, we can read from a cache -- if doing testing, and ru
 const dt = require('@cboyke/demotools');
 
 let products = await dt.largeQuery({
-   uri: dt.requestBuilder.products.build(),
+  uri: dt.requestBuilder.products.build(),
   cache: {dir: 'cache', filename: 'products.json'}
+  callback: callbackFunction // optional - to process 500 rows at a time rather than pull all items and process at end
 });
 ```
 

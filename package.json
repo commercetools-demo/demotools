@@ -14,7 +14,7 @@
     "csv-parse": "^4.10.1"
   },
   "description": "Tools for building demos.  Primary focus is on transforming / importing data into the  commercetools platform for standing up demos quickly",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "main": "demotools.js",
   "devDependencies": {},
   "scripts": {

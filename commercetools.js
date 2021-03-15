@@ -109,7 +109,8 @@ async function exec(params) {
 
 /* 
 Issue a query that will potentially return large amounts of data
-Pass: same parameters as a Query call.
+Pass: same parameters as a Query call.  Optionally pass a callback to 
+be called on chunks of 500 items, rather than return the whole list at the end.
 
 If it makes sense to do so, we can read from a cache 
 (if doing testing, and running the same query repeatedly, for example)
@@ -121,7 +122,8 @@ Example:
 
   let products = await dt.largeQuery({
     uri: dt.requestBuilder.products.build(),
-    cache: {dir: 'cache', filename: 'products.json'}
+    cache: {dir: 'cache', filename: 'products.json'}, //optional
+    callback: myCallback // optional callback function to process 500 items at a time
   });
 */
 async function largeQuery(args) {
@@ -167,8 +169,12 @@ async function largeQuery(args) {
     });
     if (result) {
       if(result.body.count) {
-        results = results.concat(result.body.results);
-        console.log('Fetched',results.length,'items');
+        if(args.callback) {
+          args.callback(result.body.results);
+        } else {
+          results = results.concat(result.body.results);
+          console.log('Fetched',results.length,'items');
+        }
         lastId = result.body.results[result.body.count-1].id;
       }
       if (result.body.count < limit) {
@@ -184,7 +190,8 @@ async function largeQuery(args) {
     writeToCache(args.cache,results);
   }
 
-  return results;
+  if(!args.callback)
+    return results;
 }
 
 module.exports = {
