@@ -81,5 +81,6 @@ returns - an array of objects keyed by values in the header row.
 
 Data mapping / transformation utils.
 
+# Linking locally
 
-TODO: provide usage example
+If developing locally, do 'yarn link' in this directory, then 'yarn link demotools' in the dependent folder.

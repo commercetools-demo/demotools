@@ -3,6 +3,13 @@
 
 const fs = require('fs');
 const _ = require('lodash');
+const slugify = require('slugify');
+
+// The standard slugify doesn't (quite) meet commercetools requirements, so we roll our own...
+function toSlug(s) {
+  const regex=/[()]/ig;
+  return slugify(s.replaceAll(regex,' '));
+}
 
 function mapFields(mapperList,input,output,initDebug=false) {
   for(let mapper of mapperList) {
@@ -18,6 +25,7 @@ function mapFields(mapperList,input,output,initDebug=false) {
     let type = typeof(value);
     if(type == 'number' || !_.isEmpty(value)) {
     
+      let values=[];
       switch(mapper.convert) {
         case 'category':
           value=[{
@@ -38,6 +46,7 @@ function mapFields(mapperList,input,output,initDebug=false) {
             console.debug('price-type',value);
           break;
         case 'price2':
+            // At some point we came across a price with leading non-numerics, so...
             value=[{
               value: {
                 currencyCode: 'USD',
@@ -77,11 +86,17 @@ function mapFields(mapperList,input,output,initDebug=false) {
         case 'list':
           if(!Array.isArray(value))
             value = [ value ];
-          let values=[];
           for(let v of value) {
             values.push(getValue(v,mapper.element));
           }
           value = values.join(',');
+          break;
+        case 'newline-list':
+          value = value.split('\n');
+          for(let v of value) {
+            values.push(v);
+          }
+          value = values;
         default:
           // Do nothing - value is already set
           break;
@@ -201,5 +216,6 @@ module.exports = {
   mapFields,
   inspect,
   writeJSON,
-  readJSON
+  readJSON,
+  toSlug,
 }

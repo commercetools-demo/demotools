@@ -11,10 +11,11 @@
     "lodash": "^4.17.15",
     "node-fetch": "^2.6.0",
     "xlsx": "^0.16.0",
-    "csv-parse": "^4.10.1"
+    "csv-parse": "^4.10.1",
+    "slugify" : "^1.5.0"
   },
   "description": "Tools for building demos.  Primary focus is on transforming / importing data into the  commercetools platform for standing up demos quickly",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "demotools.js",
   "devDependencies": {},
   "scripts": {
