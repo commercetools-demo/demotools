@@ -7,8 +7,7 @@ const slugify = require('slugify');
 
 // The standard slugify doesn't (quite) meet commercetools requirements, so we roll our own...
 function toSlug(s) {
-  const regex=/[()]/ig;
-  return slugify(s.replaceAll(regex,' '));
+  return slugify(s.replaceAll(/[^a-zA-Z0-9_\\-]/g,' '));
 }
 
 function mapFields(mapperList,input,output,initDebug=false) {
@@ -94,7 +93,9 @@ function mapFields(mapperList,input,output,initDebug=false) {
         case 'newline-list':
           value = value.split('\n');
           for(let v of value) {
-            values.push(v);
+            v = v.trim();
+            if(v)
+              values.push(v);
           }
           value = values;
         default:

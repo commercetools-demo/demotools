@@ -15,7 +15,7 @@
     "slugify" : "^1.5.0"
   },
   "description": "Tools for building demos.  Primary focus is on transforming / importing data into the  commercetools platform for standing up demos quickly",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "main": "demotools.js",
   "devDependencies": {},
   "scripts": {

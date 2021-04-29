@@ -8,6 +8,7 @@ function readCsv(filename,delimiter=',',verbose=false) {
   console.log('reading',filename,'delimiter:',delimiter);
   const input = fs.readFileSync(filename,'utf-8');
   const records = parse(input, {
+    bom: true,
     columns: true,
     skip_empty_lines: true,
     delimiter: delimiter
