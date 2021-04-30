@@ -7,7 +7,7 @@ const slugify = require('slugify');
 
 // The standard slugify doesn't (quite) meet commercetools requirements, so we roll our own...
 function toSlug(s) {
-  return slugify(s.replaceAll(/[^a-zA-Z0-9_\\-]/g,' '));
+  return slugify(s.replace(/[^a-zA-Z0-9_\\-]/g,' '));
 }
 
 function mapFields(mapperList,input,output,initDebug=false) {
@@ -23,7 +23,8 @@ function mapFields(mapperList,input,output,initDebug=false) {
     }
     let type = typeof(value);
     if(type == 'number' || !_.isEmpty(value)) {
-    
+      if(debug)
+        console.log('input value',value);
       let values=[];
       switch(mapper.convert) {
         case 'category':
@@ -31,14 +32,16 @@ function mapFields(mapperList,input,output,initDebug=false) {
             key: value,
             typeId: 'category'
           }];
-          if(debug)
-            console.debug('price-type',value);
           break;
         case 'price':
+          value = parseFloat(value);
+          if(isNaN(value)) {
+            value = 0;
+          }
           value=[{
             value: {
               currencyCode: 'USD',
-              centAmount: parseInt(parseFloat(value)*100)
+              centAmount: parseInt(value*100)
             }
           }];
           if(debug)
