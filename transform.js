@@ -27,6 +27,9 @@ function mapFields(mapperList,input,output,initDebug=false) {
         console.log('input value',value);
       let values=[];
       switch(mapper.convert) {
+        case 'slug':
+          value = toSlug(value);
+          break;
         case 'category':
           value=[{
             key: value,
