@@ -83,5 +83,8 @@ Data mapping / transformation utils.
 
 # Linking locally
 
-If developing locally, do 'yarn link' in this directory, then 'yarn link demotools' in the dependent folder.
+If developing locally, do 'yarn link' in this directory, then 'yarn link @cboyke/demotools' in the dependent folder.
 
+### Notes
+
+This module uses version 2.x of node-fetch, as version 3.x is ESM-only.

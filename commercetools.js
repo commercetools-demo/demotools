@@ -5,8 +5,10 @@ const { createClient } = require('@commercetools/sdk-client')
 const { createAuthMiddlewareForClientCredentialsFlow } = require('@commercetools/sdk-middleware-auth')
 const { createHttpMiddleware } = require('@commercetools/sdk-middleware-http')
 const { ApiRoot,executeRequest, createExecutorFromMiddlewares } = require('@commercetools/importapi-sdk');
-const fetch = require('node-fetch')
 const { readFromCache, writeToCache } = require('./cache');
+
+const fetch = require('node-fetch');
+
 
 const IMPORT_HOST='https://import.us-central1.gcp.commercetools.com';
 

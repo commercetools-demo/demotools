@@ -2,7 +2,7 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Tools for building demos.  Primary focus is on transforming / importing data into the  commercetools platform for standing up demos quickly",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "main": "demotools.js",
   "dependencies": {
     "csv-writer": "^1.6.0",
@@ -13,7 +13,9 @@
     "@commercetools/sdk-middleware-http": "^6.0.11",
     "@commercetools/importapi-sdk": "^1.19.0",
     "lodash": "^4.17.21",
-    "node-fetch": "^3.0.0",
+    
+    // Staying on version 2.x of node-fetch, as version 3 requires ESM
+    "node-fetch": "^2.6.2",
     "xlsx": "^0.17.2",
     "csv-parse": "^4.16.3",
     "slugify" : "^1.6.0"
