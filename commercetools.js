@@ -78,7 +78,9 @@ async function execute(params) {
   .catch(err => {
     if(err.statusCode==404 && params.allow404) {
       console.log('not found');
-    } else { 
+    } else {
+      if(verbose)
+        logError(err); 
       logError(err.message);
     }
     return null;
@@ -99,12 +101,7 @@ async function execute(params) {
 }
 
 function logError(err) {
-  console.log('ERROR',JSON.stringify(err,null,2));
-}
-
-async function exec(params) {
-  console.log('deprecated -- use execute instead');
-  return execute(params);
+  console.error('ERROR',JSON.stringify(err,null,2));
 }
 
 /* 
