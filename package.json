@@ -12,9 +12,7 @@
     "@commercetools/sdk-middleware-auth": "^6.1.4",
     "@commercetools/sdk-middleware-http": "^6.0.11",
     "@commercetools/importapi-sdk": "^1.19.0",
-    "lodash": "^4.17.21",
-    
-    // Staying on version 2.x of node-fetch, as version 3 requires ESM
+    "lodash": "^4.17.21",    
     "node-fetch": "^2.6.2",
     "xlsx": "^0.17.2",
     "csv-parse": "^4.16.3",
