@@ -109,14 +109,6 @@ function mapFields(mapperList,input,output,initDebug=false) {
           break;
       }
 
-      // If we have a locale, use that instead.
-      // TODO: support multiple locales
-      if('locale' in mapper) {
-        let localeValue = {};
-        localeValue[mapper.locale] = value;
-        value = localeValue;
-      }
-
       if(Array.isArray(dest)) {
         dest.forEach(d => {output[d]=value});
       } else {
@@ -139,7 +131,14 @@ function mapFields(mapperList,input,output,initDebug=false) {
           if(value == null && mapper.convert == 'number') {
             // Don't set a value for numbers that have no value, as that's not the same as zero!
           } else {
-            output[dest] = value;
+            if('locale' in mapper) {
+              if(!output[dest]) {
+                output[dest]={}
+              }
+              output[dest][mapper.locale] = value;              
+            } else {
+              output[dest] = value;
+            }
           }
         }
 
