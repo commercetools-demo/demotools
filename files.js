@@ -1,4 +1,5 @@
-
+// File-handling utilities:  read/write CSV & JSON files
+//
 const fs = require('fs');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const parse = require('csv-parse/lib/sync');
@@ -18,7 +19,6 @@ function readCsv(filename,delimiter=',',verbose=false) {
   console.log('read',records.length,'rows');
   return records;
 }
-
 
 // Expects config.outputCSV in config file
 function writeCsv(config,rows) {
@@ -40,7 +40,47 @@ function writeCsv(config,rows) {
   console.log('Wrote',rows.length,'rows to ',filename);
 }
 
+function readJSON(filename) {
+  if(!filename) {
+    console.error('No filename passed to readJSON -- exiting');
+    process.exit(1);
+  }
+  console.log('reading',filename);
+  let data = fs.readFileSync(filename,'utf8');
+  console.log('file size',data.length);
+  return JSON.parse(data);
+}
+
+function writeJSON(dir,filename,data,indent=1) {
+  if (!fs.existsSync(dir))
+    fs.mkdirSync(dir, { recursive: true });
+  let j = JSON.stringify(data,null,indent);
+  filename=dir+'/'+filename;
+  console.log('writing',filename);
+  fs.writeFileSync(filename,j, 'utf8');
+}
+
+// Write an object out as JSON for easier inspection
+function inspect(config,filename,data) {
+  if(config.inspect) {
+    if(config.inspect.enabled) {
+      if(filename) {
+        writeJSON(config.inspect.dir,filename,data);
+      } else {
+        console.error('Inspect filename undefined');
+      }
+    } else {
+      console.log('inspect disabled');
+    }
+  } else {
+    console.warn("No inspection information found in configuration file");
+  }  
+}
+
 module.exports = {
   readCsv,
-  writeCsv
+  writeCsv,
+  readJSON,
+  writeJSON,
+  inspect  
 }

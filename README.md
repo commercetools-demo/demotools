@@ -67,20 +67,85 @@ let products = await dt.largeQuery({
 });
 ```
 
-# csvUtil.js
-
-
-# readCSV
-(filename, delimiter=',',verbose=false):
-
-returns - an array of objects keyed by values in the header row.
-
-
-
+---
 # transform.js
 
 Data mapping / transformation utils.
+The heart of this module is the *mapFields* function, which takes an array of *mappers* as an argument.  A mapper describes mapping of one source field to one (or more) destination fields.
 
+A Mapper has (up to) four fields:
+
+* src: The name of the field in the source object
+* dest: The name of the field in the destination object
+* convert: (optional) - a conversion operation to perform.  One of:
+    slug, category, price, number, boolean, image, list, newline-list
+
+* type: (optional) - the data type of the destination field.  One of:
+  attr, array
+
+Examples:
+```js
+{
+  src: 'ProductID',
+  dest: 'key',
+}
+```
+The field *ProductID* in the source object will be mapped to the field *key* in the destination object -- no transformations performed (straight copy)
+## Price
+{
+  src: 'SalePrice',
+  dest: 'prices',
+  convert: 'price'
+}
+## Localized Fields:
+
+```js
+{
+  src: 'ProductName',
+  dest: 'name',
+  locale: 'en-US'
+}
+```
+In this case, ProductName in the source will map to a localized field *name* in the destination, in a structure used by commercetools localized fields.
+
+## Attributes
+```js
+{
+  src: 'Department',
+  dest: 'department',
+  type: 'attr'
+}
+```
+The source field Department will be copied to an attribute called *department* in an *attributes* array of the destination object
+
+## Category (reference by key)
+Use both a 'convert' (to convert to a reference to a category), and a 'type' (array)
+```js
+{
+  src: 'CategoryID',
+  dest: 'categories',
+  convert: 'category',
+  type: 'array'
+}
+```
+## Images
+Convert to an (external) image format
+```js
+{
+  src: 'MainImageURL',
+  dest: 'images',
+  convert: 'image',
+  type: 'array'
+}
+
+---
+# files.js
+
+
+## readCSV, writeCSV, readJSON, writeJSON, inspect
+TODO: document these
+
+---
 # Linking locally
 
 If developing locally, do 'yarn link' in this directory, then 'yarn link @cboyke/demotools' in the dependent folder.
