@@ -92,11 +92,15 @@ Examples:
 ```
 The field *ProductID* in the source object will be mapped to the field *key* in the destination object -- no transformations performed (straight copy)
 ## Price
+Convert a Price:
+```js
 {
   src: 'SalePrice',
   dest: 'prices',
   convert: 'price'
 }
+```
+
 ## Localized Fields:
 
 ```js
@@ -137,7 +141,7 @@ Convert to an (external) image format
   convert: 'image',
   type: 'array'
 }
-
+```
 ---
 # files.js
 
