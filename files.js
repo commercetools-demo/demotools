@@ -2,7 +2,7 @@
 //
 const fs = require('fs');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
-const parse = require('csv-parse/lib/sync');
+const parse = require('csv-parse/sync');
 
 // Read CSV file into array of objects, where key is column header
 function readCsv(filename,delimiter=',',verbose=false) {

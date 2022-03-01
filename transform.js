@@ -12,19 +12,23 @@ function toSlug(s) {
 /* Map fields from a source object to a destination object */
 function mapFields(mapperList,input,output,initDebug=false) {
   for(let mapper of mapperList) {
-    let debug = initDebug | mapper.debug;
+    let DEBUG = initDebug | mapper.debug;
     let value = null;
     let src=mapper.src ? mapper.src : mapper.name;
     let dest=mapper.dest ? mapper.dest : mapper.name;
+    DEBUG && console.log('mapping',src,'to',dest);
+    
     if(Array.isArray(src)) {
       value = getConcatValue(input,src,mapper.concat);
     } else {
       value = getValue(input,src);
+      DEBUG && console.log('initial value',value);    
     }
+    
     let type = typeof(value);
+    DEBUG && console.log('type',type,' is empty?',_.isEmpty(value));
+    /* First, we convert the data from the input type to the output type, if any */
     if(type == 'number' || !_.isEmpty(value)) {
-      if(debug)
-        console.log('input value',value);
       let values=[];
       switch(mapper.convert) {
         case 'slug':
@@ -51,14 +55,26 @@ function mapFields(mapperList,input,output,initDebug=false) {
               centAmount: parseInt(value*100)
             }
           };
-          if(debug)
-            console.debug('price-type',value);
+          DEBUG && console.log('price-type',value);
           break;
         case 'number':
           value=parseFloat(value);
           break;
         case 'boolean':
-          value = (value.toLowerCase==='true' || value=='1');
+          switch(type) {
+            case 'number':
+              value = value != 0;
+              break;
+            case 'boolean':
+              break;
+            default:
+              let valueStr=value.toString().toLowerCase();
+              value = (valueStr=='true' 
+                    || valueStr == '1' 
+                    || valueStr=='y' 
+                    || valueStr=='yes');
+              break;
+          }
           break;  
         case 'image':
           // It's an image, but only save it if it's a complete URL
@@ -90,10 +106,16 @@ function mapFields(mapperList,input,output,initDebug=false) {
               values.push(v);
           }
           value = values;
+          break;
+        case 'text':
+          // No matter what the input is, convert to a string
+          value = value.toString();
+          break;
         default:
           // Do nothing - value is already set
-          break;
       }
+
+      DEBUG &&  console.log('transformed',value);
 
       // If there are multiple destinations for this value, assign to all
       // example:
@@ -101,6 +123,7 @@ function mapFields(mapperList,input,output,initDebug=false) {
       if(Array.isArray(dest)) {
         dest.forEach(d => {output[d]=value});
       } else {
+        // Now, determine where the value goes (to an attribute, an array, etc.)
         if(mapper.type=='attr') {
           if(!('attributes' in output)) {
             output.attributes = [];
@@ -137,9 +160,7 @@ function mapFields(mapperList,input,output,initDebug=false) {
             }
           }
         }
-        if(debug) {
-          console.debug(src,'==>',dest,value);
-        }
+        DEBUG && console.log(src,'==>',dest,value);
       }
     }
   }

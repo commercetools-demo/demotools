@@ -11,12 +11,13 @@ async function getProductType(key) {
     });
   }
 
-async function createProductType(body) {
+async function createProductType(body,verbose) {
     console.log('Creating product type for',body.key);
     return await ct.execute({
       uri: ct.requestBuilder.productTypes.build(),
       method: 'POST',
-      body: body
+      body: body,
+      verbose: verbose
     })
   }
   
