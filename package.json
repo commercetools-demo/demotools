@@ -2,7 +2,7 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Tools for building demos.  Primary focus is on transforming / importing data into the  commercetools platform for standing up demos quickly",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "main": "demotools.js",
   "dependencies": {
     "csv-writer": "1.6.0",
@@ -11,7 +11,7 @@
     "@commercetools/sdk-client": "2.1.2",
     "@commercetools/sdk-middleware-auth": "6.2.1",
     "@commercetools/sdk-middleware-http": "6.1.1",
-    "@commercetools/importapi-sdk": "2.2.0",
+    "@commercetools/importapi-sdk": "2.3.0",
     "lodash": "4.17.21",    
     "node-fetch": "^2.6.2",
     "xlsx": "0.18.0",

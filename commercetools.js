@@ -81,9 +81,7 @@ async function execute(params) {
     if(err.statusCode==404 && params.allow404) {
       console.log('not found');
     } else {
-      if(verbose)
-        logError(err); 
-      logError(err.message);
+      logError(err);
     }
     return null;
   });

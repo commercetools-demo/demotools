@@ -1,6 +1,7 @@
 // Utility functions for managing types
 
 const ct = require('./commercetools');
+const _ = require('lodash');
 
 async function getType(key) {
   console.log('Getting type for',key);
@@ -11,9 +12,15 @@ async function getType(key) {
   });
 }
 
-// Supports add & remove of field definitions ONLY (for now)
+// 
 async function updateType(oldType,newType) {
-  const actions = [];  
+  const actions = [];
+  if(!_.isEqual(newType.name,oldType.name)) {
+    actions.push({
+      action: 'changeName',
+      name: newType.name
+    });
+  }  
   for(let newFD of newType.fieldDefinitions) {
     if(!oldType.fieldDefinitions.find(fd => fd.name == newFD.name)) {
       // Add field defn

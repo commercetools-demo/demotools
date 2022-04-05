@@ -133,10 +133,23 @@ function mapFields(mapperList,input,output,initDebug=false) {
           if(mapper.convert=='price') {
             value = value[0].value;
           }
-          output.attributes.push({
-            name: dest,
-            value: value
-          });
+          // If a localized attribute, add to existing if found.
+          if('locale' in mapper) {
+            let attr = output.attributes.find(a => a.name==dest);
+            if(!attr) {
+              attr = { name: dest, value: {}};
+              attr.value[mapper.locale] = value;
+              output.attributes.push(attr);
+            } else {
+              attr.value[mapper.locale] = value;
+            }
+          } else {
+            // plain (non-localized) attr.
+            output.attributes.push({
+              name: dest,
+              value: value
+            });
+          }
         // If the destination type is an array, then push value to the array
         } else if (mapper.type=='array') {
           if(!(dest in output)) {
