@@ -1,18 +1,27 @@
 // Utility functions for managing types
 
-const ct = require('./commercetools');
-const _ = require('lodash');
+import { apiRoot } from './commercetools.js';
+import _ from 'lodash';
 
-async function getType(key) {
-  console.log('Getting type for',key);
-  return await ct.execute({
-    uri: ct.requestBuilder.types.byKey(key).build(),
-    method: 'GET',
-    allow404: true
-  });
+async function allow404(p) {
+  let result;
+  try {
+    result = await Promise.resolve(p);
+  } catch(error) {
+    if(error.statusCode==404) {
+      console.log('not found');
+    } else {
+      throw(error);
+    }
+  }
+  return result;
 }
-
-// 
+// If error 404, just return null
+export async function getType(key) {
+  console.log('Getting type for',key);
+  return await allow404(apiRoot.types().withKey({key: key}).get().execute());
+}
+  
 async function updateType(oldType,newType) {
   const actions = [];
   if(!_.isEqual(newType.name,oldType.name)) {
@@ -45,43 +54,30 @@ async function updateType(oldType,newType) {
     console.log(actions);
     console.log('Update type for',newType.key);
     
-    return await ct.execute({
-      uri: ct.requestBuilder.types.byKey(newType.key).build(),
-      method: 'POST',
+    return await apiRoot.types().withKey({key: newType.key}).post({
       body: {
         version: oldType.version,
         actions: actions
       }
-    });
+    }).execute();
     
   }
 
 }
 
-async function createOrUpdateType(body) {
-  const existing = await getType(body.key);
-  if(existing) {
-    updateType(existing.body,body);
+export async function createOrUpdateType(type) {
+  const res = await getType(type.key);
+  console.log('res',res);
+  if(res?.body) {
+    updateType(res.body,type);
   } else {
-    console.log('Create type for',body.key);
-    return await ct.execute({
-      uri: ct.requestBuilder.types.build(),
-      method: 'POST',
-      body: body
-    });
+    console.log('Create type for',type.key);
+    return await apiRoot.types().post({body: type}).execute();
   }
 }
   
-async function deleteType(key,version) {
+export async function deleteType(key,version) {
   console.log('Deleting type',key,'version',version);
-  return await ct.execute({
-    uri: ct.requestBuilder.types.byKey(key).build() + '?version='+version,
-    method: 'DELETE',
-  });
+  return await apiRoot.types().withKey({key: key}).delete({queryArgs: {version: version}}).execute();
 }
 
-module.exports = {
-    getType,
-    createOrUpdateType,
-    deleteType
-}

@@ -1,6 +1,6 @@
 // Utility functions for managing product type
 
-const ct = require('./commercetools');
+import * as ct from './commercetoolsV1.js';
 
 async function getProductType(key) {
     console.log('Getting product type for',key);
@@ -43,7 +43,7 @@ async function createProductType(body,verbose) {
     return null;
   }
 
-  module.exports = {
+export {
       getProductType,
       createProductType,
       deleteProductType,

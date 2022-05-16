@@ -49,12 +49,21 @@ function mapFields(mapperList,input,output,initDebug=false) {
           if(isNaN(value)) {
             value = 0;
           }
-          value={
-            value: {
-              currencyCode: 'USD',
-              centAmount: parseInt(value*100)
-            }
-          };
+          if(mapper.currency=='CLP') {
+            value = {
+              value: {
+                currencyCode: mapper.currency,
+                centAmount: parseInt(value+0.5),
+              }
+            };
+          } else {
+            value= {
+              value: {
+                currencyCode: mapper.currency ? mapper.currency : 'USD',
+                centAmount: parseInt(value*100+0.5),
+              }
+            };
+          }
           DEBUG && console.log('price-type',value);
           break;
         case 'number':
@@ -128,11 +137,10 @@ function mapFields(mapperList,input,output,initDebug=false) {
           if(!('attributes' in output)) {
             output.attributes = [];
           }
-          // If a price type appears inside an attribute, then take first array entry
-          // dereference 
-          if(mapper.convert=='price') {
-            value = value[0].value;
-          }
+          // if money, dereference value
+          if(mapper.convert == 'price') {
+            value = value.value;
+          }          
           // If a localized attribute, add to existing if found.
           if('locale' in mapper) {
             let attr = output.attributes.find(a => a.name==dest);

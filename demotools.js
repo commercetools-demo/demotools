@@ -1,9 +1,9 @@
-module.exports = {
-  ...require('./transform'),
-  ...require('./commercetools'),
-  ...require('./excel'),
-  ...require('./productType'),
-  ...require('./type'),
-  ...require('./cache'),
-  ...require('./files'),
-};
+export * from './commercetools.js';
+export * from './commercetoolsV1.js';
+export * from './type.js';
+export * from './productType.js';
+export * from './excel.cjs';
+export * from './transform.cjs';
+export * from './cache.cjs';
+export * from './files.cjs';
+
