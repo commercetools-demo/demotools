@@ -1,21 +1,9 @@
 // Utility functions for managing types
 
-import { apiRoot } from './commercetools.js';
+import { apiRoot, allow404 } from './commercetools.js';
 import _ from 'lodash';
 
-async function allow404(p) {
-  let result;
-  try {
-    result = await Promise.resolve(p);
-  } catch(error) {
-    if(error.statusCode==404) {
-      console.log('not found');
-    } else {
-      throw(error);
-    }
-  }
-  return result;
-}
+
 // If error 404, just return null
 export async function getType(key) {
   console.log('Getting type for',key);

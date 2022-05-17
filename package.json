@@ -2,7 +2,7 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Tools for building demos.  Primary focus is on transforming / importing data into the  commercetools platform for standing up demos quickly",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "demotools.js",
   "type": "module",
   "dependencies": {

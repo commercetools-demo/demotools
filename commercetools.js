@@ -46,4 +46,20 @@ const ctpClient = new ClientBuilder()
   .withHttpMiddleware(httpMiddlewareOptions)
   .build();
 
+// wrapper for an execute function which returns null instead of throwing an error 
+// if not found.
+export async function allow404(p) {
+  let result;
+  try {
+    result = await Promise.resolve(p);
+  } catch(error) {
+    if(error.statusCode==404) {
+      console.log('not found');
+    } else {
+      throw(error);
+    }
+  }
+  return result;
+}
+
 export const apiRoot = createApiBuilderFromCtpClient(ctpClient).withProjectKey({projectKey: projectKey});

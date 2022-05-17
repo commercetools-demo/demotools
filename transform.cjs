@@ -49,6 +49,7 @@ function mapFields(mapperList,input,output,initDebug=false) {
           if(isNaN(value)) {
             value = 0;
           }
+          // CLP has no cents - maybe others?
           if(mapper.currency=='CLP') {
             value = {
               value: {
@@ -63,6 +64,12 @@ function mapFields(mapperList,input,output,initDebug=false) {
                 centAmount: parseInt(value*100+0.5),
               }
             };
+          }
+          // Add "channel" scope, if any.
+          if(mapper.channel) {
+            value.channel = {
+              key: mapper.channel
+            }
           }
           DEBUG && console.log('price-type',value);
           break;
@@ -87,6 +94,7 @@ function mapFields(mapperList,input,output,initDebug=false) {
           break;  
         case 'image':
           // It's an image, but only save it if it's a complete URL
+          // ALSO - MAKE SURE YOU USE type: array!
           if(value.startsWith('http://') || value.startsWith('https://')) {          
             value = {
               url: value,
