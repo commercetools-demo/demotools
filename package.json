@@ -8,12 +8,8 @@
   "dependencies": {
     "csv-writer": "1.6.0",
     "dotenv": "16.0.1",
-    "@commercetools/api-request-builder": "5.6.3",
-    "@commercetools/sdk-client": "2.1.2",
-    "@commercetools/sdk-middleware-auth": "6.2.1",
-    "@commercetools/sdk-middleware-http": "6.2.0",
     "@commercetools/sdk-client-v2": "1.4.0",
-    "@commercetools/platform-sdk": "2.7.0",
+    "@commercetools/platform-sdk": "3.0.0",
     "lodash": "4.17.21",    
     "node-fetch": "3.2.4",
     "xlsx": "0.18.5",

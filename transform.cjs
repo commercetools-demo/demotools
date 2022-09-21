@@ -41,8 +41,7 @@ function mapFields(mapperList,input,output,initDebug=false) {
           };
           break;
         case 'price':
-          // Force this thing into an array, unless it's an attribute.
-          // TO-DO:  handle scoped prices
+          // Force this thing into an array, unless it's an attribute.          
           if(mapper.type != 'attr')
             mapper.type='array'
           value = parseFloat(value);
@@ -70,6 +69,10 @@ function mapFields(mapperList,input,output,initDebug=false) {
             value.channel = {
               key: mapper.channel
             }
+          }
+          // needed for Sunrise.
+          if(mapper.country) {
+            value.country = mapper.country
           }
           DEBUG && console.log('price-type',value);
           break;

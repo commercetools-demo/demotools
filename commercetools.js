@@ -48,7 +48,7 @@ const ctpClient = new ClientBuilder()
 
 // wrapper for an execute function which returns null instead of throwing an error 
 // if not found.
-export async function allow404(p) {
+async function allow404(p) {
   let result;
   try {
     result = await Promise.resolve(p);
@@ -62,4 +62,66 @@ export async function allow404(p) {
   return result;
 }
 
-export const apiRoot = createApiBuilderFromCtpClient(ctpClient).withProjectKey({projectKey: projectKey});
+const apiRoot = createApiBuilderFromCtpClient(ctpClient).withProjectKey({projectKey: projectKey});
+
+/* 
+Issue a query that will potentially return large amounts of data.
+args:
+endpoint:  apiRoot.products(), apiRoot.categories(), etc...
+callback: myCallback // optional callback function to process 500 items at a time
+
+Example:
+const products = largeQuery({
+  endpoint: apiRoot.products()
+})
+*/
+async function largeQuery(args) {  
+  let results = [];
+
+  let max = 999999;
+  if('max' in args) {
+    max = args.max
+  }
+  let limit = 500;
+  if(max < limit) {
+    limit = max;
+  }
+  
+  let done = false;
+  let lastId=null;
+  while (!done) {
+    const queryArgs = {
+      withTotal: false,
+      limit: limit,
+      sort: 'id asc',
+    }
+    if(lastId) {
+      queryArgs.where = `id > "${lastId}"`
+    }
+    let result = await args.endpoint.get({queryArgs: queryArgs}).execute();
+    if (result) {
+      if(result.body.count) {
+        if(args.callback) {
+          args.callback(result.body.results);
+        } else {
+          results = results.concat(result.body.results);
+          console.log('Fetched',results.length,'items');
+        }
+        lastId = result.body.results[result.body.count-1].id;
+      }
+      if (result.body.count < limit) {
+        done = true;
+      }
+      if(results.length >= max) {
+        done = true;
+      }
+    }
+  }
+  return results;
+}
+
+export {
+  apiRoot,
+  largeQuery,
+  allow404
+}

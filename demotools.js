@@ -1,5 +1,4 @@
 export * from './commercetools.js';
-export * from './commercetoolsV1.js';
 export * from './type.js';
 export * from './productType.js';
 export * from './excel.cjs';
