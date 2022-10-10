@@ -228,8 +228,20 @@ function getValue(input,src) {
   return value;
 }
 
+function addVariantToProduct(v,p) {
+  if(!p.masterVariant) {
+    p.masterVariant = v;
+    return;
+  }
+  if(!p.variants) {
+    p.variants = [];
+  }
+  p.variants.push(v);
+}
+
 
 module.exports = {
   mapFields,
   toSlug,
+  addVariantToProduct
 }
