@@ -20,12 +20,19 @@ const {
   CTP_SCOPES,
 } = process.env
 
-const projectKey = CTP_PROJECT_KEY
+
+if(!CTP_PROJECT_KEY) {
+  console.error('\nERROR: commercetools API Client not found!');
+  console.error('Download API Client in .env format, and place in a sibling directory');
+  console.error('named "env" (i.e., at ../env/.env)');
+  console.error('Or specify .env file location in process.env.ENV_PATH\n');
+  process.exit(1);
+}
 
 // create the authMiddlewareOptions object
 const authMiddlewareOptions = {
   host: CTP_AUTH_URL,
-  projectKey,
+  projectKey: CTP_PROJECT_KEY,
   credentials: {
     clientId: CTP_CLIENT_ID,
     clientSecret: CTP_CLIENT_SECRET,
@@ -44,6 +51,7 @@ const ctpClient = new ClientBuilder()
   .withProjectKey(projectKey)
   .withClientCredentialsFlow(authMiddlewareOptions)
   .withHttpMiddleware(httpMiddlewareOptions)
+  //.withLoggerMiddleware()
   .build();
 
 // wrapper for an execute function which returns null instead of throwing an error 
