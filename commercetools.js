@@ -20,6 +20,7 @@ const {
   CTP_SCOPES,
 } = process.env
 
+const projectKey = CTP_PROJECT_KEY;
 
 if(!CTP_PROJECT_KEY) {
   console.error('\nERROR: commercetools API Client not found!');
@@ -32,7 +33,7 @@ if(!CTP_PROJECT_KEY) {
 // create the authMiddlewareOptions object
 const authMiddlewareOptions = {
   host: CTP_AUTH_URL,
-  projectKey: CTP_PROJECT_KEY,
+  projectKey,
   credentials: {
     clientId: CTP_CLIENT_ID,
     clientSecret: CTP_CLIENT_SECRET,
@@ -48,7 +49,7 @@ const httpMiddlewareOptions = {
 };
 
 const ctpClient = new ClientBuilder()
-  .withProjectKey(projectKey)
+  .withProjectKey(CTP_PROJECT_KEY)
   .withClientCredentialsFlow(authMiddlewareOptions)
   .withHttpMiddleware(httpMiddlewareOptions)
   //.withLoggerMiddleware()
