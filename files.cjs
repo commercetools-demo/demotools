@@ -20,22 +20,17 @@ function readCsv(filename,delimiter=',',verbose=false) {
   return records;
 }
 
-// Expects config.outputCSV in config file
-function writeCsv(config,rows) {
-  if (!fs.existsSync(config.outputCSV.dir)){
-      fs.mkdirSync(config.outputCSV.dir, { recursive: true });
+// Write a CSV file to the specified directory
+function writeCsv(dir,file,header,rows) {
+  if (!fs.existsSync(dir)){
+      fs.mkdirSync(dir, { recursive: true });
   }
-  var filename = config.outputCSV.dir + '/' + config.outputCSV.file
-  var header = [];
-  config.outputCSV.fields.forEach(f => {header.push({id: f, title: f})});
+  var filename = dir + '/' + file  ;
   const csvWriter = createCsvWriter({
       path: filename,
       header: header
   });
 
-  if(config.outputCSV.max) {
-    rows = rows.slice(0,config.outputCSV.max);
-  }
   csvWriter.writeRecords(rows);
   console.log('Wrote',rows.length,'rows to ',filename);
 }
