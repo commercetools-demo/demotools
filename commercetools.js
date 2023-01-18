@@ -22,9 +22,10 @@ const {
 
 const projectKey = CTP_PROJECT_KEY;
 
-if(!CTP_PROJECT_KEY) {
+if(!CTP_CLIENT_ID) {
   console.error('\nERROR: commercetools API Client not found!');
   console.error('Download API Client in .env format, and place in a sibling directory');
+  console.error('to your calling script');
   console.error('named "env" (i.e., at ../env/.env)');
   console.error('Or specify .env file location in process.env.ENV_PATH\n');
   process.exit(1);
@@ -81,7 +82,9 @@ callback: myCallback // optional callback function to process 500 items at a tim
 
 Example:
 const products = largeQuery({
-  endpoint: apiRoot.products()
+  endpoint: apiRoot.productProjections()
+  expand: (same as TS SDK expand)
+  callback: function to call on each block of 500 items
 })
 */
 async function largeQuery(args) {  
@@ -105,7 +108,10 @@ async function largeQuery(args) {
       sort: 'id asc',
     }
     if(lastId) {
-      queryArgs.where = `id > "${lastId}"`
+      queryArgs.where = `id > "${lastId}"`;
+    }
+    if(args.expand) {
+      queryArgs.expand = args.expand;
     }
     let result = await args.endpoint.get({queryArgs: queryArgs}).execute();
     if (result) {

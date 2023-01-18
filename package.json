@@ -2,21 +2,21 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Tools for building demos.  Primary focus is on transforming / importing data into the  commercetools platform for standing up demos quickly",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "main": "demotools.js",
   "type": "module",
   "dependencies": {
     "csv-writer": "1.6.0",
-    "dotenv": "16.0.1",
-    "@commercetools/sdk-client-v2": "^2.0.2",
-    "@commercetools/platform-sdk": "^4.1.0",
+    "dotenv": "16.0.3",
+    "@commercetools/sdk-client-v2": "^2.1.1",
+    "@commercetools/platform-sdk": "^4.3.0",
     "lodash": "4.17.21",    
-    "node-fetch": "3.2.10",
-    "csv-parse": "5.0.4",
+    "node-fetch": "3.3.0",
+    "csv-parse": "5.3.3",
     "slugify" : "1.6.5"
   },
   "devDependencies": {
-    "@types/node": "17.0.32"
+    "@types/node": "18.11.18"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

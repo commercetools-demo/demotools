@@ -1,6 +1,7 @@
 // File-handling utilities:  read/write CSV & JSON files
 //
 const fs = require('fs');
+const path = require("path");
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const csv = require('csv-parse/sync');
 
@@ -14,18 +15,19 @@ function readCsv(filename,delimiter=',',verbose=false) {
     skip_empty_lines: true,
     delimiter: delimiter
   }) 
-  if(verbose)
+  if(verbose) {
     console.log(JSON.stringify(records,null,2));
+  }
   console.log('read',records.length,'rows');
   return records;
 }
 
 // Write a CSV file to the specified directory
-function writeCsv(dir,file,header,rows) {
+function writeCsv(filename,header,rows) {
+  const dir = path.dirname(filename);
   if (!fs.existsSync(dir)){
       fs.mkdirSync(dir, { recursive: true });
   }
-  var filename = dir + '/' + file  ;
   const csvWriter = createCsvWriter({
       path: filename,
       header: header
@@ -41,17 +43,17 @@ function readJSON(filename) {
     process.exit(1);
   }
   console.log('reading',filename);
-  let data = fs.readFileSync(filename,'utf8');
-  console.log('file size',data.length);
+  const data = fs.readFileSync(filename,'utf8');
+  console.log('file size',data.length.toLocaleString());
   return JSON.parse(data);
 }
 
-function writeJSON(dir,filename,data,indent=1) {
+function writeJSON(filename,data,indent=1) {
+  const dir = path.dirname(filename);
   if (!fs.existsSync(dir))
     fs.mkdirSync(dir, { recursive: true });
-  let j = JSON.stringify(data,null,indent);
-  filename=dir+'/'+filename;
-  console.log('writing',filename);
+  const j = JSON.stringify(data,null,indent);
+  console.log('writing',filename,'size',j.length.toLocaleString());
   fs.writeFileSync(filename,j, 'utf8');
 }
 
@@ -60,7 +62,7 @@ function inspect(config,filename,data) {
   if(config.inspect) {
     if(config.inspect.enabled) {
       if(filename) {
-        writeJSON(config.inspect.dir,filename,data);
+        writeJSON(path.join(config.inspect.dir,filename),data);
       } else {
         console.error('Inspect filename undefined');
       }
