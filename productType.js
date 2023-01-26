@@ -1,5 +1,5 @@
 // Utility functions for managing product type
-import { apiRoot } from './commercetools.js';
+import { apiRoot, allow404 } from './commercetools.js';
 
 async function getProductType(key) {
     console.log('Getting product type for',key);
@@ -15,7 +15,7 @@ async function createProductType(body) {
   
 async function deleteProductType(key,version) {
   console.log('Deleting product type',key,'version',version);
-  return await apiRoot.productTypes().withKey({key: key}).delete({version: version});
+  return await apiRoot.productTypes().withKey({key: key}).delete({queryArgs:{ version: version}}).execute();
 }
 
 // Return updated version number if successful
@@ -24,7 +24,7 @@ async function updateProductType(key,body) {
   let result = await apiRoot.productTypes().withKey({key: key}).post({
     version: body.version,
     body: body
-  });
+  }).execute();
   if(result) {
       return result.body.version;
   }
