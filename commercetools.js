@@ -1,11 +1,6 @@
 import fetch from 'node-fetch';
-import {
-  ClientBuilder
-} from '@commercetools/sdk-client-v2';
-
-import {
-  createApiBuilderFromCtpClient,
-} from '@commercetools/platform-sdk';
+import { ClientBuilder } from '@commercetools/sdk-client-v2';
+import { createApiBuilderFromCtpClient } from '@commercetools/platform-sdk';
 
 import dotenv from 'dotenv';
 
@@ -27,7 +22,7 @@ if(!CTP_CLIENT_ID) {
   console.error('Download API Client in .env format, and place in a sibling directory');
   console.error('to your calling script');
   console.error('named "env" (i.e., at ../env/.env)');
-  console.error('Or specify .env file location in process.env.ENV_PATH\n');
+  console.error('Or specify .env file location in environment variable ENV_PATH\n');
   process.exit(1);
 }
 
