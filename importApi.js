@@ -51,3 +51,20 @@ const client = new ClientBuilder()
 
 export const importApiRoot = createApiBuilderFromCtpClient(client).withProjectKeyValue({ projectKey });
 
+// Create container if doesn't exist.
+export async function ensureImportContainer(key,resourceType) {
+  try {
+    await importApiRoot
+      .importContainers()
+      .withImportContainerKeyValue({importContainerKey: key})
+      .get()
+      .execute()
+  } catch(err) {
+    await importApiRoot.importContainers().post({
+      body: {
+        key,
+        resourceType
+      }
+    }).execute();
+  }
+}
