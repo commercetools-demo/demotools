@@ -1,19 +1,19 @@
 // File-handling utilities:  read/write CSV & JSON files
 //
-const fs = require('fs');
-const path = require("path");
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
-const csv = require('csv-parse/sync');
+import fs from 'fs';
+import path from 'path';
+import { createObjectCsvWriter as createCsvWriter } from 'csv-writer';
+import { parse } from 'csv/sync';
 
 // Read CSV file into array of objects, where key is column header
 function readCsv(filename,delimiter=',',verbose=false) {
   console.log('reading',filename,'delimiter:',delimiter);
   const input = fs.readFileSync(filename,'utf-8');
-  const records = csv.parse(input, {
+  const records = parse(input, {
     bom: true,
     columns: true,
     skip_empty_lines: true,
-    delimiter: delimiter
+    delimiter
   }) 
   if(verbose) {
     console.log(JSON.stringify(records,null,2));
@@ -74,7 +74,7 @@ function inspect(config,filename,data) {
   }  
 }
 
-module.exports = {
+export {
   readCsv,
   writeCsv,
   readJSON,

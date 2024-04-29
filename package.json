@@ -1,26 +1,29 @@
 {
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
-  "description": "Tools for building demos.  Primary focus is on transforming / importing data into the  commercetools platform for standing up demos quickly",
-  "version": "2.3.3",
-  "main": "demotools.js",
+  "description": "Tools for building demos",
+  "version": "2.5.0",
+  "main": "./dist/demotools.js",
+  "files": ["dist"],
   "type": "module",
   "dependencies": {
+    "@commercetools/importapi-sdk": "5.1.0",
+    "@commercetools/platform-sdk": "7.1.0",
+    "@commercetools/sdk-client-v2": "2.3.0",
+    "csv": "6.3.6",
     "csv-writer": "1.6.0",
     "dotenv": "16.3.1",
-    "@commercetools/sdk-client-v2": "2.2.0",
-    "@commercetools/platform-sdk": "4.11.0",
-    "@commercetools/importapi-sdk": "4.6.2",
-    "lodash": "4.17.21",    
+    "lodash": "4.17.21",
     "node-fetch": "3.3.2",
-    "csv-parse": "5.4.0",
-    "slugify" : "1.6.6"
+    "slugify": "1.6.6",
+    "typescript": "^5.3.3"
   },
   "devDependencies": {
-    "@types/node": "18.11.18"
+    "@types/node": "20.10.4"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc --project tsconfig.json"
   },
   "repository": {
     "type": "git",

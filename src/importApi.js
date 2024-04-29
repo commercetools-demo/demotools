@@ -54,17 +54,24 @@ export const importApiRoot = createApiBuilderFromCtpClient(client).withProjectKe
 // Create container if doesn't exist.
 export async function ensureImportContainer(key,resourceType) {
   try {
-    await importApiRoot
+    console.log('Checking for container',key);
+    const res = await importApiRoot
       .importContainers()
       .withImportContainerKeyValue({importContainerKey: key})
       .get()
       .execute()
+    console.log(res.statusCode);
   } catch(err) {
-    await importApiRoot.importContainers().post({
+    console.log('Creating import container',key,'for resource type',resourceType)
+    const res = await importApiRoot.importContainers().post({
       body: {
         key,
         resourceType
       }
     }).execute();
+    console.log(res);
+    if(res.statusCode == 201) {
+      console.log('Import container creation taking a while...');
+    }
   }
 }

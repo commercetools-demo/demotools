@@ -1,4 +1,4 @@
-const fs = require('fs');
+import fs from 'fs';
 /*
 Read/write data from cache.  
 Param is a 'cache' object of form 
@@ -36,7 +36,7 @@ function writeToCache(cache,data) {
 
 
 
-module.exports = {
+export {
   readFromCache,
   writeToCache
 }
