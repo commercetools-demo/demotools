@@ -45,7 +45,6 @@ const httpMiddlewareOptions = {
 };
 
 let ctpClient;
-console.log('LOG API CALLS',process.env.LOG_API_CALLS);
 if(process.env.LOG_API_CALLS=="true") {
   ctpClient = new ClientBuilder()
     .withProjectKey(CTP_PROJECT_KEY)

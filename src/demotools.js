@@ -7,3 +7,4 @@ export * from './files.js';
 export * from './connectApi.js';
 export * from './importApi.js';
 export * from './getAll.js';
+export * from './product.js';
