@@ -21,7 +21,7 @@ const action1Product = async (product, actions, count, errors, debug = false) =>
       }
     }
   } catch(err) {
-    console.error(err);
+    console.error(JSON.stringify(err.body.errors));
     errors++;
   }
   return {count,errors};
@@ -34,12 +34,16 @@ export const actionAllProducts = async (actionCallback, debug = false) => {
   const products = await getAll({
     endpoint: apiRoot.productProjections()
   });
+  debug && console.log('Found',products.length,'products');
   for(let product of products) {
     const action = actionCallback(product);
-    const result = await action1Product(product, [action], count, errors, debug); 
-    count = result.count;
-    errors = result.errors;
+    if(action) {
+      const result = await action1Product(product, [action], count, errors, debug); 
+      count = result.count;
+      errors = result.errors;        
+    }
   }
+  console.log('Updated',count,'products with',errors,'errors');
 }
 
 // Perform an update action for all products, all variants
