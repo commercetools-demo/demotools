@@ -42,6 +42,15 @@ function flatten(obj) {
   return result.join(', ');
 }
 
+/**
+ * Maps a single field from an input object to an output object, applying transformations and conversions as specified by the mapper object.
+ *
+ * @param {Object} mapper - The mapping configuration object.
+ * @param {Object} input - The input object to map from.
+ * @param {Object} output - The output object to map to.
+ * @param {Boolean} initDebug - Whether to initialize the debug mode.
+ * @return {undefined}
+ */
 function map1Field(mapper,input,output,initDebug) {
   if(mapper.localeMap) {
     mapMultiLocaleField(mapper,input,output,initDebug);
@@ -173,6 +182,9 @@ function map1Field(mapper,input,output,initDebug) {
         }
         value = values;
         break;
+      case 'array-list':
+        value = value.replace('[','').replace(']','').split(',').map(a => a.trim());
+        break;
       case 'text':
         // No matter what the input is, convert to a string
         value = value.toString();
@@ -216,7 +228,7 @@ function map1Field(mapper,input,output,initDebug) {
           });
         }
       // If the destination type is an array, then push value to the array
-      } else if (mapper.type == 'array') {
+      } else if (mapper.type == 'array' || mapper.convert == 'array-list') {
         if(!(dest in output)) {
           output[dest]=[];
         }
