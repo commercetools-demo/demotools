@@ -1,10 +1,15 @@
 import fetch from 'node-fetch';
 import { ClientBuilder } from '@commercetools/sdk-client-v2';
 import { createApiBuilderFromCtpClient } from '@commercetools/platform-sdk';
-
 import dotenv from 'dotenv';
+import fs from 'fs';
 
-dotenv.config({path : process.env.ENV_PATH || '../env/.env'});
+// Try to load .env from current directory first, then fall back to ../env/.env
+const envPath = process.env.ENV_PATH || 
+  (fs.existsSync('.env') ? '.env' : '../env/.env');
+
+dotenv.config({ path: envPath });
+
 //reference API client credentials from environment variables
 const {
   CTP_PROJECT_KEY,

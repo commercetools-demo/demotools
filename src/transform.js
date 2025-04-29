@@ -277,7 +277,12 @@ function getValue(input,src) {
   let value;
   if(src.includes('.') || src.includes('[')) {  
     // It's a complex expression = use "eval" to find the value
-    value = eval('input.' + src);
+    try {
+      value = eval('input.' + src);
+    } catch(e) {
+      console.warn('Error evaluating',src);
+      value = null;
+    }
   } else {
     value = input[src];
   }

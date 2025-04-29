@@ -45,6 +45,7 @@ export const actionAllProducts = async (actionCallback, debug = false) => {
     }
   }
   console.log('Updated',count,'products with',errors,'errors');
+  return {count, errors}
 }
 
 
@@ -72,5 +73,6 @@ export const actionAllVariants = async (actionCallback, debug = false) => {
     }
     
   }
+  console.log('Updated',count,'products with',errors,'errors');
   return {count, errors}
 }

@@ -49,7 +49,7 @@ const client = new ClientBuilder()
   .withUserAgentMiddleware()
   .build()
 
-export const importApiRoot = createApiBuilderFromCtpClient(client).withProjectKeyValue({ projectKey });
+export const importApiRoot = createApiBuilderFromCtpClient(client, IMPORT_API_URL).withProjectKeyValue({ projectKey });
 
 // Create container if doesn't exist.
 export async function ensureImportContainer(key,resourceType) {

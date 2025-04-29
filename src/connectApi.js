@@ -48,4 +48,4 @@ const connectClient = new ClientBuilder()
   .withLoggerMiddleware()
   .build();
 
-export const connectRoot = createApiBuilderFromCtpClient(connectClient).withProjectKey({projectKey: projectKey});
+export const connectRoot = createApiBuilderFromCtpClient(connectClient, connectUrl).withProjectKey({projectKey: projectKey});

@@ -2,7 +2,7 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Tools for building demos",
-  "version": "2.6.0",
+  "version": "2.6.3",
   "main": "./dist/demotools.js",
   "files": ["dist"],
   "type": "module",
