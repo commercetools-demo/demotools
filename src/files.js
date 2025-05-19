@@ -6,14 +6,15 @@ import { createObjectCsvWriter as createCsvWriter } from 'csv-writer';
 import { parse } from 'csv/sync';
 
 // Read CSV file into array of objects, where key is column header
-function readCsv(filename,delimiter=',',verbose=false) {
+function readCsv(filename,delimiter=',',quote='"',verbose=false) {
   console.log('reading',filename,'delimiter:',delimiter);
   const input = fs.readFileSync(filename,'utf-8');
   const records = parse(input, {
     bom: true,
     columns: true,
     skip_empty_lines: true,
-    delimiter
+    delimiter,
+    quote
   }) 
   if(verbose) {
     console.log(JSON.stringify(records,null,2));
