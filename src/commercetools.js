@@ -80,4 +80,4 @@ export async function allow404(p) {
   return result;
 }
 
-export const apiRoot = createApiBuilderFromCtpClient(ctpClient, CTP_API_URL ).withProjectKey({projectKey: projectKey});
+export const apiRoot = createApiBuilderFromCtpClient(ctpClient, CTP_API_URL).withProjectKey({projectKey: projectKey});
