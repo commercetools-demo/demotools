@@ -51,27 +51,62 @@ const client = new ClientBuilder()
 
 export const importApiRoot = createApiBuilderFromCtpClient(client, IMPORT_API_URL).withProjectKeyValue({ projectKey });
 
-// Create container if doesn't exist.
-export async function ensureImportContainer(key,resourceType) {
+/* Create container if doesn't exist.
+ * Make sure to use await when calling this function, as container creation sometimes takes a while
+ */
+export async function ensureImportContainer(key, resourceType) {
+  let containerExists = false;
   try {
-    console.log('Checking for container',key);
+    console.log('Checking for container', key);
     const res = await importApiRoot
       .importContainers()
       .withImportContainerKeyValue({importContainerKey: key})
       .get()
       .execute()
     console.log(res.statusCode);
+    containerExists = true;
+    console.log('Container', key, 'exists');
+    return;
   } catch(err) {
-    console.log('Creating import container',key,'for resource type',resourceType)
+    if(err.statusCode === 404) {
+      containerExists = false;
+    }
+  }
+  // Wait and retry logic - check container exists after creation
+  const waitTimeMs = 2000; // 2 seconds between retries
+  const maxWaitTimeMs = 15000; // 15 seconds maximum wait time
+  let totalWaitTimeMs = 0;
+  
+  if(!containerExists) {
+    console.log('Creating container', key, 'for resource type', resourceType)
     const res = await importApiRoot.importContainers().post({
       body: {
         key,
         resourceType
       }
     }).execute();
-    console.log(res);
-    if(res.statusCode == 201) {
-      console.log('Import container creation taking a while...');
+    console.log('Created container', key, 'for resource type', resourceType, 'with status', res.statusCode);
+    console.log('Verifying import container creation...');
+    
+    while (!containerExists && totalWaitTimeMs < maxWaitTimeMs) {
+      await new Promise(resolve => setTimeout(resolve, waitTimeMs));
+      totalWaitTimeMs += waitTimeMs;
+      
+      try {
+        await importApiRoot
+          .importContainers()
+          .withImportContainerKeyValue({importContainerKey: key})
+          .get()
+          .execute();
+        containerExists = true;
+        console.log(`Import container ${key} verified after ${totalWaitTimeMs/1000} seconds`);
+      } catch (verifyErr) {
+        console.log(`Container not ready yet, waited ${totalWaitTimeMs/1000} seconds so far, retrying...`);
+      }
+    }
+    
+    if (!containerExists) {
+      console.warn(`Warning: Could not verify container ${key} creation after ${maxWaitTimeMs/1000} seconds`);
     }
   }
 }

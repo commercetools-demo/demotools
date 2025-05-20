@@ -29,17 +29,19 @@ const action1Product = async (product, actions, count, errors, debug = false) =>
 }
 // Perform update actions for all products
 // pass: action as a callback that takes a product  and returns an array of update actions
-export const actionAllProducts = async (actionCallback, debug = false) => {
+export const actionAllProducts = async (actionCallback, args = {debug: false}) => {
   let count = 0;
   let errors = 0;
   const products = await getAll({
-    endpoint: apiRoot.productProjections()
+    endpoint: apiRoot.products(),
+    ...args
   });
-  debug && console.log('Found',products.length,'products');
+  args.debug && console.log('Found',products.length,'products');
   for(let product of products) {
     let actions = actionCallback(product);
+    args.debug && console.log('actions',actions);
     if(actions) {
-      const result = await action1Product(product, actions, count, errors, debug); 
+      const result = await action1Product(product, actions, count, errors, args.debug); 
       count = result.count;
       errors = result.errors;        
     }

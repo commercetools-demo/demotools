@@ -25,11 +25,15 @@ type GetAllArgs = {
   endpoint: any;
   callback?: (results: []) => void;
   max?: number;
-  queryArgs?: QueryArgs
+  queryArgs?: QueryArgs,
+  debug?: boolean
 }
 
 export async function getAll(args: GetAllArgs) {  
   let results: any[] = [];
+  if(args?.debug) {
+    console.log('getAll',args);
+  }
 
   let max = 999999;
   if(args.max) {
