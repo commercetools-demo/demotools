@@ -109,6 +109,51 @@ Product-specific utilities:
   console.log(`Updated ${result.count} products with ${result.errors} errors`);
   ```
 
+- **actionAllVariants(actionCallback, debug)** - Perform update actions for all product variants (master and regular variants)
+  - Parameters:
+    - `actionCallback`: (Required) Function that takes a product and variant and returns an array of update actions
+    - `debug`: (Optional) Boolean to enable debug logging (default: false)
+  - Returns: Object with count of updated products and errors: `{count, errors}`
+  
+  Example:
+  ```js
+  // Add an attribute to all variants of all products
+  const result = await actionAllVariants(
+    (product, variant) => [{
+      action: 'setAttribute',
+      variantId: variant.id,
+      name: 'processed',
+      value: true
+    }],
+    true
+  );
+  console.log(`Updated ${result.count} products with ${result.errors} errors`);
+  ```
+
+### productType.js
+
+Product type management utilities:
+
+- **getProductType(key)** - Retrieve a product type by key, returns null if not found
+  - `key`: (Required) The product type key to look up
+  - Returns: The product type object or null if not found
+
+- **createProductType(body)** - Create a new product type
+  - `body`: (Required) Product type definition object
+  - Returns: Result of the create operation
+
+- **deleteProductType(key, version)** - Delete a product type by key and version
+  - Parameters:
+    - `key`: (Required) The product type key to delete
+    - `version`: (Required) The version number of the product type to delete
+  - Returns: Result of the delete operation
+
+- **updateProductType(key, body)** - Update an existing product type
+  - Parameters:
+    - `key`: (Required) The product type key to update
+    - `body`: (Required) Product type definition object with version
+  - Returns: Updated version number if successful, null otherwise
+
 ### type.js
 
 Type management utilities:
@@ -116,6 +161,16 @@ Type management utilities:
 - **getType(key)** - Retrieve a type by key, returns null if not found
   - `key`: (Required) The type key to look up
   - Returns: The type object or null if not found
+
+- **createOrUpdateType(type)** - Create a new type or update an existing one
+  - `type`: (Required) Type definition object
+  - Returns: Result of the create or update operation
+
+- **deleteType(key, version)** - Delete a type by key and version
+  - Parameters:
+    - `key`: (Required) The type key to delete
+    - `version`: (Required) The version number of the type to delete
+  - Returns: Result of the delete operation
 
 ### transform.js
 
