@@ -7,9 +7,9 @@
   "files": ["dist"],
   "type": "module",
   "dependencies": {
-    "@commercetools/importapi-sdk": "^7.0.0",
+    "@commercetools/importapi-sdk": "^6.5.0",
     "@commercetools/platform-sdk": "^8.12.1",
-    "@commercetools/sdk-client-v2": "^3.1.0",
+    "@commercetools/sdk-client-v2": "^3.0.0",
     "csv": "^6.3.6",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.4.5",
