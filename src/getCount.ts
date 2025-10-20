@@ -12,23 +12,21 @@ const products = getAll({
 })
 */
 
-// type QueryArgs = {
-//   where?: string | string[];
-//   priceCurrency?: string;
-//   priceCountry?: string;
-//   priceCustomerGroup?: string;
-//   priceChannel?: string;
-//   expand?: string | string[];
-// }
+type QueryArgs = {
+  where?: string | string[];
+  priceCurrency?: string;
+  priceCountry?: string;
+  priceCustomerGroup?: string;
+  priceChannel?: string;
+  expand?: string | string[];
+}
 
-// type GetAllArgs = {
-//   endpoint: any;
-//   callback?: (results: []) => void;
-//   max?: number;
-//   queryArgs?: QueryArgs
-// }
+type GetCountArgs = {
+  endpoint: any;
+  queryArgs?: QueryArgs;
+}
 
-async function initialTotal(args, where) {
+async function initialTotal(args: GetCountArgs, where?: string): Promise<number> {
     const queryArgs = { 
     ...args.queryArgs,
     ...(where ? {where} : {}),
@@ -41,7 +39,7 @@ async function initialTotal(args, where) {
    return result.body.total;
 }
 
-async function getLastId(args, where, lastTotal) {
+async function getLastId(args: GetCountArgs, where: string | null, lastTotal: number): Promise<string> {
     const queryArgs = { 
     ...args.queryArgs,
     ...(where ? {where} : {}),
@@ -54,7 +52,7 @@ async function getLastId(args, where, lastTotal) {
    return result.body.results[result.body.count-1].id;
 }
 
-export async function getCount(args) {  
+export async function getCount(args: GetCountArgs): Promise<number> {  
   let limit = 500;
   let offset = 0;
   let total = 0;

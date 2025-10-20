@@ -1,4 +1,11 @@
 import fs from 'fs';
+
+interface CacheConfig {
+  dir: string;
+  filename: string;
+  verbose?: boolean;
+}
+
 /*
 Read/write data from cache.  
 Param is a 'cache' object of form 
@@ -9,7 +16,7 @@ Param is a 'cache' object of form
 }
 TODO: add timeouts & format options (JSON, etc.)
 */
-function readFromCache(cache) {
+function readFromCache(cache: CacheConfig): any | undefined {
   let fullPath = cache.dir + '/' + cache.filename;
   if(cache.verbose)
     console.log('looking in cache:',fullPath)
@@ -24,7 +31,7 @@ function readFromCache(cache) {
   return undefined;
 }
 
-function writeToCache(cache,data) {
+function writeToCache(cache: CacheConfig, data: any): void {
   if(!fs.existsSync(cache.dir)) {
     fs.mkdirSync(cache.dir, {recursive: true} );
   }

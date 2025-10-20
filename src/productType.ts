@@ -22,8 +22,10 @@ async function deleteProductType(key,version) {
 async function updateProductType(key,body) {
   console.log('Updating product type',key);
   let result = await apiRoot.productTypes().withKey({key: key}).post({
-    version: body.version,
-    body: body
+    body: {
+      ...body,
+      version: body.version
+    }
   }).execute();
   if(result) {
       return result.body.version;

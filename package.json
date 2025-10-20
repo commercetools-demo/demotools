@@ -2,9 +2,12 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Tools for building demos",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "main": "./dist/demotools.js",
-  "files": ["dist"],
+  "types": "./dist/demotools.d.ts",
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "dependencies": {
     "@commercetools/importapi-sdk": "^6.5.0",
@@ -19,6 +22,7 @@
     "typescript": "^5.4.5"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.20",
     "@types/node": "^20.12.12"
   },
   "scripts": {

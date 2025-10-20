@@ -2,9 +2,8 @@
 import { apiRoot, allow404 } from './commercetools.js';
 import _ from 'lodash';
 
-
 // If error 404, just return null
-export async function getType(key) {
+export async function getType(key: string): Promise<any> {
   console.log('Getting type for',key);
   return await allow404(apiRoot.types().withKey({key: key}).get().execute());
 }
@@ -31,7 +30,7 @@ function compareTypes(fieldName,oldType,newType) {
       // enum value exists, check label
       if(!_.isEqual(newValue.label,oldValue.label)) {
         actions.push({
-          action: `change${type.name}Label`,
+          action: `change${typeName}Label`,
           fieldName: fieldName,
           value: newValue
         })
@@ -113,7 +112,7 @@ async function updateType(oldType,newType) {
 
 }
 
-export async function createOrUpdateType(type) {
+export async function createOrUpdateType(type: any): Promise<any> {
   const res = await getType(type.key);
   console.log('res',JSON.stringify(res,null,1));
   if(res?.body) {
@@ -124,7 +123,7 @@ export async function createOrUpdateType(type) {
   }
 }
   
-export async function deleteType(key,version) {
+export async function deleteType(key: string, version: number): Promise<any> {
   console.log('Deleting type',key,'version',version);
   return await apiRoot.types().withKey({key: key}).delete({queryArgs: {version: version}}).execute();
 }

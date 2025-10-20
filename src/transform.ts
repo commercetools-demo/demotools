@@ -111,7 +111,7 @@ function map1Field(mapper,input,output,initDebug) {
           value= {
             value: {
               currencyCode: mapper.currency ? mapper.currency : 'USD',
-              centAmount: parseInt(value*100+0.5),
+              centAmount: parseInt((value*100+0.5).toString()),
             }
           };
         }
