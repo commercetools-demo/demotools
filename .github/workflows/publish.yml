@@ -23,6 +23,16 @@ jobs:
       - run: npm install
       - run: npm run build
 
+      - name: Debug OIDC claims (so we can match the npm trusted-publisher config)
+        run: |
+          TOKEN=$(curl -sSL -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm" | jq -r .value)
+          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2)
+          # base64url → base64, pad
+          PAD=$(( (4 - ${#PAYLOAD} % 4) % 4 ))
+          PADDED="${PAYLOAD}$(printf '=%.0s' $(seq 1 $PAD))"
+          echo "$PADDED" | tr '_-' '/+' | base64 -d 2>/dev/null | jq '{sub,repository,repository_owner,workflow,workflow_ref,job_workflow_ref,ref,environment}'
+
       - name: Skip if version already published
         id: check
         run: |
