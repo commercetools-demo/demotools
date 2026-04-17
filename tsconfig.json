@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
-    "target": "es6",   
-    "outDir": "dist",                                   
-    "module": "es6",    
+    "target": "es2020",
+    "outDir": "dist",
+    "module": "es2020",
     "moduleResolution": "node",
-    "allowJs": true,                                                          
-    "esModuleInterop": true,                             
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "strict": false,
@@ -13,5 +14,5 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["./src/**/*"],
+  "include": ["./src/**/*"]
 }
