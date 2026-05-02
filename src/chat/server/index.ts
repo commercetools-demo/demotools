@@ -1,10 +1,14 @@
 export {
   makeChatRoute,
+  type MakeChatRouteOptions,
+} from './route-factories.js';
+
+export {
   makeSpeakRoute,
   makeTranscribeRoute,
-  type MakeChatRouteOptions,
-  type MakeAudioRouteOptions,
-} from './route-factories.js';
+  type MakeSpeakRouteOptions,
+  type MakeTranscribeRouteOptions,
+} from './audio-routes.js';
 
 export { runChatTurn } from '../agent.js';
 export type {
