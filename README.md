@@ -47,35 +47,71 @@ Drop-in replacement for hand-rolled "show JSON" buttons in demo pages.
 
 A vendor-neutral chat assistant engine extracted from `b2b-starter` and
 `b2c-starter`. It owns the boring/load-bearing parts (agent loop,
-system-reminder injection, address-detection, set-cookie forwarding); the
-demo owns its own tools, system prompt, and branding.
+system-reminder injection, address-detection, voice loop, audio routes,
+presentational components); the demo owns its own tools, system prompt,
+context, and branding.
 
-### Why share this layer
+### What's shared (4.0.x)
 
-Roughly 70% of the chat code in our demos is identical: agent loop, voice
-loop, Markdown rendering, action chips, OOS guard, ref-locked tile button.
-Sharing it eliminates a real bug class — most recently a fix that landed in
-b2b on 2026-05-02 and silently went un-ported to b2c for a day. With this
-package, fixes flow through `npm version patch` and a `Renovate` bump.
+| Layer | Module |
+|---|---|
+| Agent loop, system-reminder injection | `runChatTurn` (server) |
+| Route factory: `/api/chat` | `makeChatRoute` |
+| Route factories: TTS + STT | `makeSpeakRoute`, `makeTranscribeRoute` |
+| Voice mic loop (VAD + auto-submit) | `useVoiceLoop` |
+| `/api/chat` fetch wrapper | `postChatTurn` |
+| Action chips | `<ChatActionChips>` |
+| Composer (textarea + send) | `<ChatComposer>` |
+| Launcher (round button + "Continue chat" pill) | `<ChatLauncher>` |
+| Product tiles (with OOS guard, ref-locked Add) | `<ChatProductTile>`, `<ChatProductRow>` |
+| Cart card | `<ChatCartSummary>` |
+| Order confirmation card | `<ChatOrderConfirmation>` |
+| Shipping address form (with optional email field) | `<ChatAddressForm>` |
+| Types: tools, turns, artifacts, addresses | top-level exports |
 
-### What the package does NOT include
+All components are headless: i18n labels, `formatMoney`, routing primitives,
+and hooks (`useChat`, `useCart`, etc.) flow in via props. Each demo wraps
+the library component with a 10-line shim that wires up the local hooks.
+
+### What's NOT shared
 
 Per-demo divergence stays per-demo:
 - **Tool implementations** (`search_products`, `add_to_cart`, etc.) — they
   bind to each demo's commerce backend (B2B as-associate carts vs. B2C
   anonymous; BU/store pickers vs. payment forms).
 - **System prompt** — tone, scope, branding.
-- **Cart-touching components** (`ChatProductTile`, `ChatCartSummary`,
-  `ChatAddressForm`, etc.) — they need a `useCart()` shim and a unified
-  `formatMoney` signature first. Held back; planned for a later release.
-- **`ChatProvider`/`useChat` context** — extending `UiAction` and artifact
-  types via generics needs review before the API ossifies.
-- **Voice loop hook** — pure utility, lifts as-is in a follow-up release.
+- **Domain-specific artifact components** — B2B's `ChatStorePicker` /
+  `ChatBusinessUnitPicker` and B2C's `ChatPaymentForm` (saved-card picker)
+  are intentionally per-demo because the underlying data shapes diverge.
 
-### Quick wire-up (Next.js App Router)
+### Held back for v5
+
+These need API design before locking down:
+- **`ChatProvider`/`useChat` context** — generics over `UiAction` and
+  artifact extras
+- **`<ChatPanel>`** — slot-based composition (header brand, voice status
+  bar, scroller, composer)
+- **`<ChatMessage>` artifact router** — pluggable artifact renderers so
+  demos register their own (`ChatStorePicker`, `ChatPaymentForm`, etc.)
+
+### Why share this layer
+
+Roughly 70% of the chat code in our demos was identical: agent loop, voice
+loop, Markdown rendering, action chips, OOS guard, ref-locked tile button.
+Sharing eliminates a real bug class — a fix landed in b2b on 2026-05-02
+and silently went un-ported to b2c for a day before this package existed.
+With v4, fixes flow through `npm version patch` and a single dependency
+bump.
+
+### Wire-up sketch
+
+A new demo's chat surface is roughly: install `@cboyke/demotools`, write a
+`tools.ts` + `system-prompt.ts`, then 6 component shims (~10 lines each)
+that pass demo hooks/i18n into the library components.
+
+**`/api/chat/route.ts`** (the explicit form — `makeChatRoute` is also available):
 
 ```ts
-// site/app/api/chat/route.ts
 import OpenAI from 'openai';
 import { runChatTurn, type ChatComplete } from '@cboyke/demotools/chat/server';
 import { NextResponse } from 'next/server';
@@ -94,8 +130,6 @@ const chatComplete: ChatComplete = async ({ messages, tools, model }) => {
   return { finish_reason: r.choices[0].finish_reason, message: r.choices[0].message as never };
 };
 
-// Adapt your existing executeTool(name, args, ctx) to the library's
-// `(args, ctx) => ToolExecutionResult` shape:
 const toolRegistry = Object.fromEntries(
   TOOL_NAMES.map((name) => [
     name,
@@ -105,7 +139,7 @@ const toolRegistry = Object.fromEntries(
         toolPayload: r.toolPayload,
         isError: r.isError,
         setCookies: r.setCookies,
-        artifacts: { products: r.products, cart: r.cart, order: r.order, /* ... */ },
+        artifacts: { products: r.products, cart: r.cart, order: r.order /* ... */ },
       };
     },
   ]),
@@ -119,7 +153,7 @@ export async function POST(request: Request) {
     uiActions: body.uiActions ?? [],
     recentProducts: body.recentProducts ?? [],
     language: body.language ?? 'en-US',
-    ctx: { session, /* ... */ },
+    ctx: { session /* ... */ },
     systemPrompt: buildSystemPrompt({ session, language: body.language }),
     tools: TOOLS,
     toolRegistry,
@@ -131,12 +165,21 @@ export async function POST(request: Request) {
 }
 ```
 
-A `makeChatRoute(opts)` factory exists too — see
-[`src/chat/server/route-factories.ts`](https://github.com/commercetools-demo/demotools/blob/main/src/chat/server/route-factories.ts)
-— but the explicit form above maps more clearly to what each demo needs to
-provide.
+**`/api/chat/speak/route.ts`** + **`/transcribe/route.ts`** — 4 lines each:
 
-### Action chips
+```ts
+import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
+import { makeSpeakRoute } from '@cboyke/demotools/chat/server';
+
+export const POST = makeSpeakRoute({
+  openai: new OpenAI() as never,
+  NextResponse: NextResponse as never,
+});
+```
+
+**Component shims** — pass hooks + i18n + formatters to the library
+component. Same shape across all 7 components:
 
 ```tsx
 // site/components/chat/ChatActionChips.tsx
@@ -151,6 +194,41 @@ export function ChatActionChips({ suggestions }) {
       suggestions={suggestions}
       onSelect={(query) => void sendMessage(query)}
       disabled={isLoading}
+    />
+  );
+}
+```
+
+```tsx
+// site/components/chat/ChatProductTile.tsx
+'use client';
+import Image from 'next/image';
+import Link from 'next/link';
+import { ChatProductTile as LibChatProductTile } from '@cboyke/demotools/chat';
+import { useChat } from '@/context/ChatContext';
+import { useCart } from '@/context/CartContext';
+import { useFormatters } from '@/hooks/useFormatters';
+import { useTranslations } from 'next-intl';
+
+export function ChatProductTile({ product }) {
+  const t = useTranslations('chat');
+  const { formatMoney } = useFormatters();
+  const { addItem } = useCart();
+  const { pushUiAction, sendMessage } = useChat();
+
+  return (
+    <LibChatProductTile
+      product={product}
+      formatMoney={formatMoney}
+      labels={{ /* 8 strings */ }}
+      pdpHref={pdpHref}
+      onAdd={async (p) => {
+        await addItem(p.id, p.variantId, 1);
+        pushUiAction({ type: 'added_to_cart', productId: p.id, productName: p.name, quantity: 1 });
+        void sendMessage('');
+      }}
+      ImageComponent={Image}
+      LinkComponent={Link}
     />
   );
 }
@@ -192,9 +270,15 @@ v4, add a `@source` line to your CSS so the classes get scanned in
 ## Versioning
 
 - `3.0.x` — `JsonViewer` + `JsonModal` only.
-- `3.1.x` — adds `/chat` and `/chat/server` subpaths. Existing imports
-  unchanged.
-- `4.0.0` (planned) — adds chat React components (`ChatPanel`,
-  `ChatLauncher`, `ChatMessage`, `ChatProductTile`, voice loop). Will
-  require a `formatMoney` callback prop on cart-touching components, hence
-  the major bump.
+- `3.1.x` — adds `/chat` and `/chat/server` subpaths (agent loop +
+  `ChatActionChips` + types). Existing imports unchanged.
+- `4.0.x` — adds the bulk of the chat surface: `useVoiceLoop`,
+  `postChatTurn`, `makeSpeakRoute`, `makeTranscribeRoute`,
+  `ChatComposer`, `ChatLauncher`, `ChatProductRow`, `ChatProductTile`,
+  `ChatCartSummary`, `ChatOrderConfirmation`, `ChatAddressForm`. New
+  components require label props (i18n strings), hence the major bump.
+- `5.0.0` (planned) — `ChatProvider` / `useChat` context with generics
+  over `UiAction` and artifact extras; slot-based `<ChatPanel>`;
+  pluggable `<ChatMessage>` artifact router so demos can register their
+  own renderers (`ChatStorePicker`, `ChatPaymentForm`, etc.) under
+  known artifact keys.
