@@ -9,6 +9,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./chat": {
+      "types": "./dist/chat/index.d.ts",
+      "default": "./dist/chat/index.js"
+    },
+    "./chat/server": {
+      "types": "./dist/chat/server/index.d.ts",
+      "default": "./dist/chat/server/index.js"
     }
   },
   "files": [
