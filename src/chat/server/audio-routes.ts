@@ -11,11 +11,9 @@ interface NextRequestLike {
 }
 
 interface NextResponseFactory {
-  json(body: unknown, init?: { status?: number }): {
-    headers: Headers;
-  };
+  json(body: unknown, init?: { status?: number }): Response;
   // For audio/mpeg streams the route returns `new NextResponse(...)` directly.
-  new (body: BodyInit | null, init?: ResponseInit): { headers: Headers };
+  new (body: BodyInit | null, init?: ResponseInit): Response;
 }
 
 interface OpenAILike {
