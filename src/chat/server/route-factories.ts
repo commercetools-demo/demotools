@@ -40,12 +40,10 @@ interface NextRequestLike {
   nextUrl: { origin: string };
 }
 
-interface NextResponseLike {
-  headers: Headers;
-}
-
+// NextResponse extends Response. We type the factory return as `Response`
+// so consumers can re-export the handler directly without casting.
 interface NextResponseFactory {
-  json(body: unknown, init?: { status?: number }): NextResponseLike;
+  json(body: unknown, init?: { status?: number }): Response;
 }
 
 /**
@@ -103,7 +101,7 @@ function rateOk(key: string, limit: number, windowMs: number): boolean {
  */
 export function makeChatRoute<Session, UiAction = UiActionBase>(
   opts: MakeChatRouteOptions<Session, UiAction>,
-): (request: NextRequestLike) => Promise<NextResponseLike> {
+): (request: NextRequestLike) => Promise<Response> {
   const rate = opts.rateLimit === undefined ? { limit: 20, windowMs: 60_000 } : opts.rateLimit;
 
   return async function POST(request) {
