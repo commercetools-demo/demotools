@@ -167,40 +167,4 @@ export function makeChatRoute<Session, UiAction = UiActionBase>(
   };
 }
 
-// makeSpeakRoute and makeTranscribeRoute follow the same pattern but wrap
-// the OpenAI audio client. Out of scope for the skeleton — sketch only.
-export interface MakeAudioRouteOptions {
-  /** Pre-configured OpenAI client (or any compatible audio API). */
-  openai: {
-    audio: {
-      speech: {
-        create: (input: {
-          model: string;
-          voice: string;
-          input: string;
-          response_format: 'mp3';
-        }) => Promise<{ body: ReadableStream | null }>;
-      };
-      transcriptions: {
-        create: (input: {
-          file: unknown;
-          model: string;
-          language?: string;
-        }) => Promise<{ text: string }>;
-      };
-    };
-  };
-  NextResponse: NextResponseFactory;
-}
-
-// TODO: implement makeSpeakRoute / makeTranscribeRoute factories. They are
-// thin wrappers around openai.audio.* and don't have the same configurability
-// surface as makeChatRoute, so we'll add them once the chat route is wired
-// end-to-end in at least one consumer.
-export function makeSpeakRoute(_opts: MakeAudioRouteOptions): never {
-  throw new Error('makeSpeakRoute: not yet implemented in skeleton');
-}
-
-export function makeTranscribeRoute(_opts: MakeAudioRouteOptions): never {
-  throw new Error('makeTranscribeRoute: not yet implemented in skeleton');
-}
+// makeSpeakRoute / makeTranscribeRoute moved to ./audio-routes.ts
