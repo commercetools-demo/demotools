@@ -20,7 +20,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "CLAUDE.md",
+    "README.md"
   ],
   "type": "module",
   "peerDependencies": {

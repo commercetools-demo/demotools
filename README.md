@@ -258,14 +258,44 @@ For local development, link from a sibling checkout:
 
 ## Tailwind
 
-The UI components use Tailwind utility classes. If your project is on Tailwind
-v4, add a `@source` line to your CSS so the classes get scanned in
-`node_modules`:
+The UI components ship as compiled JS with Tailwind utility classes embedded as
+string literals (e.g. `bg-black/60`, `bg-[#1e1e1e]`, `text-[#9cdcfe]`). Tailwind
+only generates CSS for class names it can *see* during its content scan, so you
+**must** tell Tailwind to scan this package's `dist/` — otherwise the JSON
+modal renders unstyled (no backdrop, no syntax colors, content bleeds onto the
+page underneath).
+
+**Tailwind v3** — add the path to `content` in `tailwind.config.js`:
+
+```js
+// tailwind.config.js
+export default {
+  content: [
+    './index.html',
+    './src/**/*.{js,jsx,ts,tsx}',
+    './node_modules/@cboyke/demotools/dist/**/*.js', // ← required
+  ],
+  // ...
+};
+```
+
+**Tailwind v4** — add a `@source` line to your CSS:
 
 ```css
 @import "tailwindcss";
 @source "../node_modules/@cboyke/demotools/dist/**/*.js";
 ```
+
+After adding the path, restart the dev server (a hot reload of
+`tailwind.config.js` isn't always enough — Vite's PostCSS pipeline can hold a
+stale content set).
+
+### Smoke test
+
+Open the JSON modal in your demo. If you see a proper dark overlay with a
+search bar and VS Code-style syntax colors, you're good. If the JSON tree
+appears inline over the page with no backdrop, your content scan is missing
+the `dist/` path.
 
 ## Versioning
 
