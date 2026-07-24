@@ -5,16 +5,22 @@ demos.
 
 ## Modules
 
-The package exports three subpaths:
+The package exports these subpaths:
 
 | Import path                              | Contents                                       |
 |------------------------------------------|------------------------------------------------|
 | `@cboyke/demotools`                      | UI components (`JsonViewer`, `JsonModal`)      |
 | `@cboyke/demotools/chat`                 | Chat types, `ChatActionChips`                  |
 | `@cboyke/demotools/chat/server`          | Chat agent loop, route factory                 |
+| `@cboyke/demotools/tracker`              | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
+| `@cboyke/demotools/tracker/server`       | Gate helpers, `createTrackerProxyRoute`, `createGateRoute` |
 
-The `chat/server` entrypoint is server-only — keep it out of `'use client'`
-files so the LLM driver doesn't end up in the browser bundle.
+The `chat/server` and `tracker/server` entrypoints are server-only — keep them
+out of `'use client'` files (the former bundles the LLM driver into the
+browser; the latter is Next.js route handlers).
+
+See **CLAUDE.md → "Demo-tracker & gate"** for the full integration contract
+(the iOS Safari ITP fix, gated vs. track-only modes, and copy-paste wire-up).
 
 ## UI components
 
