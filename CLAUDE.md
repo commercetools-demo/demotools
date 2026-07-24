@@ -81,10 +81,43 @@ real consumers — don't repeat it.
 | `@cboyke/demotools/chat/server`    | Server only           | Agent loop, route factories                  |
 | `@cboyke/demotools/tracker`        | Client + server       | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
 | `@cboyke/demotools/tracker/server` | Server only           | Gate helpers + `createTrackerProxyRoute` / `createGateRoute` |
+| `@cboyke/demotools/ct`             | Client + server       | `ProjectExpiredBanner`, `ProductSearchDisabledBanner` |
+| `@cboyke/demotools/ct/server`      | Server only           | `getSessionSecret`, project-trial-expired probe, Product-Search-disabled status |
 
-Keep `chat/server` and `tracker/server` out of `'use client'` files — the
-former bundles the LLM driver into the browser; the latter contains route
-handlers.
+Keep `chat/server`, `tracker/server`, and `ct/server` out of `'use client'`
+files — they bundle server-only code (LLM driver / route handlers / server env
++ fetches).
+
+## commercetools resilience (`/ct`)
+
+Graceful-degradation helpers that encode hard-won fixes so they land once for
+every demo. All read the standard `CTP_*` env vars; nothing is app-coupled.
+
+- **`getSessionSecret()`** (`/ct/server`) — HMAC key for the session JWT.
+  MANDATORY `SESSION_SECRET` in production (refuses the public dev fallback, so a
+  deploy that forgot it can't be impersonated). Edge-safe; share it between the
+  app's session module and its `proxy.ts` so they never drift.
+- **Trial-expired** (`/ct/server`): `checkProjectActive()` (throttled OAuth
+  probe), `isProjectExpired()`, `markProjectExpiredFromError(err)`. Render
+  `<ProjectExpiredBanner>` (`/ct`) in the root layout when expired.
+  ```tsx
+  // app/layout.tsx
+  import { checkProjectActive, isProjectExpired } from '@cboyke/demotools/ct/server';
+  import { ProjectExpiredBanner } from '@cboyke/demotools/ct';
+  await checkProjectActive();
+  // …later: {isProjectExpired() && <ProjectExpiredBanner />}
+  // and in CT catch sites: markProjectExpiredFromError(e)
+  ```
+- **Product-Search-disabled** (`/ct/server` + `/ct`): the detection needs the
+  app's own CT client, so bind it once with a probe closure and re-export:
+  ```ts
+  // lib/ct/search.ts
+  import { createProductSearchStatus } from '@cboyke/demotools/ct/server';
+  const s = createProductSearchStatus(() =>
+    apiRoot.products().search().post({ body: { limit: 0 } }).execute().then(() => {}));
+  export const { isProductSearchDisabledError, isProductSearchDisabled, checkProductSearchEnabled } = s;
+  // layout: {!(await checkProductSearchEnabled()) && <ProductSearchDisabledBanner />}
+  ```
 
 ## Demo-tracker & gate
 
