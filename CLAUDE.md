@@ -74,11 +74,81 @@ real consumers — don't repeat it.
 
 ## Module boundaries
 
-| Import path                     | Use in                | Notes                            |
-|---------------------------------|-----------------------|----------------------------------|
-| `@cboyke/demotools`             | Client + server       | `JsonViewer`, `JsonModal`        |
-| `@cboyke/demotools/chat`        | Client only           | Chat components, types, hooks    |
-| `@cboyke/demotools/chat/server` | Server only           | Agent loop, route factories      |
+| Import path                        | Use in                | Notes                                        |
+|------------------------------------|-----------------------|----------------------------------------------|
+| `@cboyke/demotools`                | Client + server       | `JsonViewer`, `JsonModal`                    |
+| `@cboyke/demotools/chat`           | Client only           | Chat components, types, hooks                |
+| `@cboyke/demotools/chat/server`    | Server only           | Agent loop, route factories                  |
+| `@cboyke/demotools/tracker`        | Client + server       | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
+| `@cboyke/demotools/tracker/server` | Server only           | Gate helpers + `createTrackerProxyRoute` / `createGateRoute` |
 
-Keep `chat/server` out of `'use client'` files — pulling it client-side
-bundles the LLM driver into the browser.
+Keep `chat/server` and `tracker/server` out of `'use client'` files — the
+former bundles the LLM driver into the browser; the latter contains route
+handlers.
+
+## Demo-tracker & gate
+
+The [demo-tracker](https://github.com/commercetools-demo/demo-tracker) is an
+external analytics + password-gate service. This library owns the storefront
+side so a fix lands once for every demo. There are two integration shapes,
+selected by the proxy `mode`:
+
+- **Gated** (b2c/b2b): the app runs its OWN branded `/gate`. The proxy
+  authenticates the tracker server-side from the `demo_gate` cookie and never
+  hands the browser a `dt_session` cookie.
+- **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
+  tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
+
+### iOS Safari ITP — why it's built this way (do not "simplify")
+
+The gate is enforced in a **Server Component**, NOT a Netlify edge function:
+Next 16 renamed `middleware.ts` → `proxy.ts` and `@netlify/plugin-nextjs` does
+not deploy it as a routed edge handler, so an edge gate silently serves
+**ungated**. And `t.js` is loaded **first-party** through the proxy, NOT
+cross-origin — a cross-origin tracker request makes iOS Safari ITP classify the
+site as a bounce tracker and rewrite the `demo_gate` cookie to `SameSite=Strict`
+(withheld on cross-app top-level navigations → gate reappears on cold open).
+The cookie is named `demo_gate` (not `dt_session`), set `SameSite=Lax`, and
+`DemoGate` includes a same-site self-heal. All four ingredients are required.
+
+### Wiring a consumer (Next.js App Router)
+
+```ts
+// site/app/api/tracker/[...path]/route.ts
+import { createTrackerProxyRoute } from '@cboyke/demotools/tracker/server';
+export const dynamic = 'force-dynamic';
+const handler = createTrackerProxyRoute({ mode: 'gated' }); // or 'track-only'
+export const GET = handler, POST = handler, PUT = handler,
+  PATCH = handler, DELETE = handler, OPTIONS = handler;
+
+// site/app/api/gate/route.ts  (gated only)
+import { createGateRoute } from '@cboyke/demotools/tracker/server';
+import { GATE_HOME_PATH } from '@/lib/gate';
+export const dynamic = 'force-dynamic';
+export const { GET, POST } = createGateRoute({ homePath: GATE_HOME_PATH });
+
+// site/lib/gate.ts  (gated only — the ONLY app-specific glue)
+import { cookies } from 'next/headers';
+import { routing } from '@/i18n/routing';
+import { GATE_COOKIE, isGateEnabled, isGateOpen } from '@cboyke/demotools/tracker/server';
+export { gateSlug, trackerOrigin, isGateEnabled, siteIsOpen, GATE_COOKIE } from '@cboyke/demotools/tracker/server';
+export const GATE_HOME_PATH = `/${routing.defaultLocale}`;
+export async function isDemoGateOpen() {
+  if (!isGateEnabled()) return true;
+  return isGateOpen((await cookies()).get(GATE_COOKIE)?.value);
+}
+
+// site/app/gate/page.tsx  (gated only)
+import { DemoGate } from '@cboyke/demotools/tracker';
+// … redirect if isDemoGateOpen(); else <DemoGate homePath={GATE_HOME_PATH} open={await siteIsOpen()} />
+
+// site/app/layout.tsx  (<head>)
+import { TrackerScripts } from '@cboyke/demotools/tracker';
+// <TrackerScripts context={{ store, customer }} />   (gate defaults to false)
+```
+
+Env: `NEXT_PUBLIC_DEMO_TRACKER_SITE` (slug — drives gate + script) and optional
+`NEXT_PUBLIC_DEMO_TRACKER_URL` (defaults to `https://tracker.ctdemo.net`). The
+gate is inert unless `NODE_ENV === 'production'` AND a slug is set. Fire
+semantic events with `track(event, props)`; use `<TrackEvent>` from Server
+Components; use `trackBeacon()` before a hard navigation (e.g. one-click login).

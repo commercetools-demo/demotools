@@ -2,7 +2,7 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Reusable React components for building commercetools demos",
-  "version": "4.0.2",
+  "version": "4.1.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,6 +17,14 @@
     "./chat/server": {
       "types": "./dist/chat/server/index.d.ts",
       "default": "./dist/chat/server/index.js"
+    },
+    "./tracker": {
+      "types": "./dist/tracker/index.d.ts",
+      "default": "./dist/tracker/index.js"
+    },
+    "./tracker/server": {
+      "types": "./dist/tracker/server/index.d.ts",
+      "default": "./dist/tracker/server/index.js"
     }
   },
   "files": [
@@ -30,6 +38,7 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
+    "@types/node": "^20.19.43",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "react": "^19.0.0",
