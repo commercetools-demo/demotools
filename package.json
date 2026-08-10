@@ -2,7 +2,7 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Reusable React components for building commercetools demos",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -46,7 +46,7 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@types/node": "^20.19.43",
+    "@types/node": "^22.20.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "react": "^19.0.0",
@@ -54,7 +54,9 @@
     "typescript": "^5.7.0"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json"
+    "build": "tsc --project tsconfig.json",
+    "test": "tsc --noEmit --project tsconfig.test.json",
+    "prepublishOnly": "npm test && npm run build"
   },
   "repository": {
     "type": "git",

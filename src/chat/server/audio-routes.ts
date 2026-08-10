@@ -5,10 +5,9 @@
  * passes their pre-configured client.
  */
 
-interface NextRequestLike {
-  json(): Promise<unknown>;
-  formData(): Promise<FormData>;
-}
+// First argument is the global `Request`, not a structural subset — see the note
+// in tracker/server/routes.ts for why the subset breaks Next's route validator
+// for any consumer that re-exports the handler. Fixed 2026-08-10.
 
 interface NextResponseFactory {
   json(body: unknown, init?: { status?: number }): Response;
@@ -58,7 +57,7 @@ export function makeSpeakRoute(opts: MakeSpeakRouteOptions) {
   const model = opts.model ?? 'tts-1';
   const defaultVoice = opts.defaultVoice ?? 'nova';
   const maxChars = opts.maxChars ?? 2000;
-  return async function POST(request: NextRequestLike) {
+  return async function POST(request: Request) {
     try {
       const { text, voice } = (await request.json()) as { text?: string; voice?: string };
       if (!text || typeof text !== 'string') {
@@ -102,7 +101,7 @@ export interface MakeTranscribeRouteOptions {
 
 export function makeTranscribeRoute(opts: MakeTranscribeRouteOptions) {
   const model = opts.model ?? 'whisper-1';
-  return async function POST(request: NextRequestLike) {
+  return async function POST(request: Request) {
     try {
       const form = await request.formData();
       const audio = form.get('audio');
