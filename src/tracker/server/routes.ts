@@ -20,14 +20,25 @@
 
 import { GATE_COOKIE, TRACKER_BASE_PATH, TRACKER_COOKIE, gateSlug, trackerOrigin } from '../config.js';
 
-// The minimal slice of NextRequest we use — a standard Fetch Request satisfies it.
-interface RequestLike {
-  method: string;
-  url: string;
-  headers: Headers;
-  arrayBuffer(): Promise<ArrayBuffer>;
-  formData(): Promise<FormData>;
-}
+// Handlers take the global `Request`, NOT a structural subset of it.
+//
+// A hand-rolled `interface RequestLike { method; url; headers; ... }` type-checks
+// everywhere except the one place that matters. Next's route validator (generated
+// by next-types-plugin) does not ask whether the handler ACCEPTS a Request — it
+// reads the declared first-argument type and requires it to extend
+// `Request | NextRequest`:
+//
+//   Diff<ParamCheck<Request | NextRequest>, { __param_type__: FirstArg<GET> }>
+//
+// A structural subset fails that: Request extends RequestLike, not the reverse.
+// So `export const { GET, POST } = createGateRoute(...)` broke b2c-starter's build
+// with `Type "RequestLike" is not a valid type for the function's first argument`
+// while `tsc --noEmit` stayed green — ordinary assignability is bivariant on
+// parameters, so every other check passed. See test/route-types.ts, which
+// reproduces the validator's constraint. Fixed 2026-08-10.
+//
+// `Request` is a global from the consumer's own lib, so this still imports
+// nothing from `next` — the reason the subset existed in the first place.
 
 // The tracker's dt_session is an HS256 JWT: 3 base64url segments. We forward
 // ONLY a value of this shape (never the '1' presence-marker or anything else).
@@ -71,12 +82,12 @@ export interface TrackerProxyOptions {
 
 export function createTrackerProxyRoute(
   opts: TrackerProxyOptions = {},
-): (req: RequestLike) => Promise<Response> {
+): (req: Request) => Promise<Response> {
   const mode = opts.mode ?? 'gated';
   const basePath = opts.basePath ?? TRACKER_BASE_PATH;
   const getOrigin = opts.origin ?? trackerOrigin;
 
-  return async function handler(req: RequestLike): Promise<Response> {
+  return async function handler(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const upstreamPath = url.pathname.startsWith(basePath)
       ? url.pathname.slice(basePath.length)
@@ -159,8 +170,8 @@ function serializeGateCookie(value: string, maxAge: number): string {
  * GET: same-origin auth check for the /gate self-heal — returns `{ authed }`.
  */
 export function createGateRoute(opts: GateRouteOptions): {
-  GET: (req: RequestLike) => Promise<Response>;
-  POST: (req: RequestLike) => Promise<Response>;
+  GET: (req: Request) => Promise<Response>;
+  POST: (req: Request) => Promise<Response>;
 } {
   const errorPath = opts.errorPath ?? '/gate?gate_error=1';
   const getOrigin = opts.origin ?? trackerOrigin;
@@ -173,7 +184,7 @@ export function createGateRoute(opts: GateRouteOptions): {
     return new Response(null, { status: 303, headers });
   }
 
-  async function POST(req: RequestLike): Promise<Response> {
+  async function POST(req: Request): Promise<Response> {
     const site = getSlug();
     // Gate not configured (no slug) — nothing to validate against; let them in.
     if (!site) return redirectTo(opts.homePath);
@@ -200,7 +211,7 @@ export function createGateRoute(opts: GateRouteOptions): {
     }
   }
 
-  async function GET(req: RequestLike): Promise<Response> {
+  async function GET(req: Request): Promise<Response> {
     const authed = !!parseCookies(req.headers.get('cookie'))[GATE_COOKIE];
     return new Response(JSON.stringify({ authed }), {
       headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },

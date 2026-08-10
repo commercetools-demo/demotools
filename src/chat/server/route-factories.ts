@@ -31,14 +31,19 @@ import type {
   UiActionBase,
 } from '../types.js';
 
-// We avoid taking a hard dependency on `next` types by retyping the surface
-// we use. This is intentional — the library should work with any Next.js
-// version that exposes NextRequest/NextResponse with the standard fetch API.
-interface NextRequestLike {
-  json(): Promise<unknown>;
-  headers: Headers;
-  nextUrl: { origin: string };
-}
+// The handler's first argument is the global `Request` — see the long note in
+// tracker/server/routes.ts. Next's route validator reads the DECLARED parameter
+// type and requires it to extend `Request | NextRequest`, so a structural subset
+// (`interface NextRequestLike { json(); headers; nextUrl }`) fails the build for
+// anyone who re-exports the handler directly, even though `tsc --noEmit` passes.
+// That is what broke b2c-starter's gate route; these factories had the same
+// defect and only escaped it because their consumers happen to wrap the handler
+// in a local function. Fixed 2026-08-10.
+//
+// `Request` is a global, so this still takes no dependency on `next` — which was
+// the point of the subset. `nextUrl.origin` was the one member plain Request
+// lacks; it is now derived from `request.url`, which App Router route handlers
+// give as an absolute URL.
 
 // NextResponse extends Response. We type the factory return as `Response`
 // so consumers can re-export the handler directly without casting.
@@ -101,7 +106,7 @@ function rateOk(key: string, limit: number, windowMs: number): boolean {
  */
 export function makeChatRoute<Session, UiAction = UiActionBase>(
   opts: MakeChatRouteOptions<Session, UiAction>,
-): (request: NextRequestLike) => Promise<Response> {
+): (request: Request) => Promise<Response> {
   const rate = opts.rateLimit === undefined ? { limit: 20, windowMs: 60_000 } : opts.rateLimit;
 
   return async function POST(request) {
@@ -133,7 +138,7 @@ export function makeChatRoute<Session, UiAction = UiActionBase>(
       }
 
       const cookieHeader = request.headers.get('cookie') ?? '';
-      const origin = request.nextUrl.origin;
+      const origin = new URL(request.url).origin;
       const ctx = opts.buildToolContext
         ? opts.buildToolContext({ session, language, origin, cookieHeader })
         : { session, language, origin, cookieHeader };

@@ -1,0 +1,9 @@
+{
+  // Type-checks the library plus test/, which the build tsconfig deliberately
+  // excludes (test/ is not published — see "files" in package.json).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["./src/**/*", "./test/**/*"]
+}
