@@ -79,12 +79,68 @@ All components are headless: i18n labels, `formatMoney`, routing primitives,
 and hooks (`useChat`, `useCart`, etc.) flow in via props. Each demo wraps
 the library component with a 10-line shim that wires up the local hooks.
 
+### commercetools Managed MCP Servers (5.0)
+
+Read-side commerce tools no longer have to be hand-written. Point the chat
+engine at a [Managed MCP Server](https://docs.commercetools.com/api/managed-mcp-servers-overview)
+and its tools are discovered at runtime, converted to OpenAI function-call
+shape, and merged with the demo's local tools.
+
+```ts
+import { createMcpToolSource } from '@cboyke/demotools/chat/server';
+
+const mcp = createMcpToolSource<ToolContext>({
+  url: process.env.CT_MCP_URL!,            // mcpServer.url from the MCP Server config
+  auth: {
+    type: 'clientCredentials',
+    authUrl: process.env.CTP_AUTH_URL!,
+    clientId: process.env.CT_MCP_CLIENT_ID!,
+    clientSecret: process.env.CT_MCP_CLIENT_SECRET!,
+    scope: process.env.CT_MCP_SCOPE!,      // mcp:{projectKey}:{mcpServerKey}
+  },
+  rename: { read_product_search: 'search_products', read_carts: 'view_cart' },
+  params: { read_carts: { pick: [] } },    // no model-settable parameters
+  injectArgs: (tool, args, ctx) =>
+    tool === 'read_carts' ? { id: ctx.session.cartId } : undefined,
+  mapResult: (tool, payload, ctx) => /* → { artifacts, toolPayload } */,
+});
+
+export const POST = makeChatRoute({
+  /* … */
+  toolSource: mcp.getToolSource,           // remote tools
+  tools, toolRegistry,                     // local tools; these win on a name clash
+});
+```
+
+The client speaks Streamable HTTP JSON-RPC directly (no
+`@modelcontextprotocol/sdk` dependency) and handles the `initialize`
+handshake, SSE-or-JSON responses, `Mcp-Session-Id` replay and re-init,
+OAuth client-credentials caching, and 401 refresh. `tools/list` is cached
+per process, so a warm container pays the handshake once, not per turn.
+
+Four options exist because they turn out to be load-bearing in practice:
+
+| Option | Why you need it |
+|---|---|
+| `injectArgs` | Forces session-derived values (cart id, customer id, currency, locale) **over** whatever the model supplied. A project-wide MCP credential otherwise lets the model read any shopper's cart by passing an id. |
+| `params` | Prunes the exposed JSON Schema. Commerce MCP's `read_product_search` alone is ~28 KB of schema; a realistic eight-tool set costs ~12k tokens **per agent-loop iteration**. Pruning to the parameters the model should set cuts that to ~2k. |
+| `preflight` | Answers locally when a remote call can only 404 — a guest with no cart, an order lookup from a signed-out visitor. |
+| `mapResult` | Turns raw commercetools JSON into the typed artifacts the chat UI renders, and shrinks what goes back to the model. |
+
+`inlineJsonSchemaRefs` flattens the internal `$ref` pointers Commerce MCP
+emits, which several function-calling endpoints reject; cycles collapse to a
+permissive object.
+
+If the MCP server is unreachable, `makeChatRoute` logs and runs the turn with
+the local tools only rather than failing outright.
+
 ### What's NOT shared
 
 Per-demo divergence stays per-demo:
-- **Tool implementations** (`search_products`, `add_to_cart`, etc.) — they
-  bind to each demo's commerce backend (B2B as-associate carts vs. B2C
-  anonymous; BU/store pickers vs. payment forms).
+- **Write-side tool implementations** (`add_to_cart`, `submit_order`, …) —
+  they bind to each demo's commerce backend (B2B as-associate carts vs. B2C
+  anonymous; BU/store pickers vs. payment forms). Read-side tools can come
+  from a Managed MCP Server instead — see above.
 - **System prompt** — tone, scope, branding.
 - **Domain-specific artifact components** — B2B's `ChatStorePicker` /
   `ChatBusinessUnitPicker` and B2C's `ChatPaymentForm` (saved-card picker)

@@ -2,7 +2,7 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Reusable React components for building commercetools demos",
-  "version": "4.2.1",
+  "version": "5.0.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
