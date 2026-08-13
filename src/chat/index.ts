@@ -5,6 +5,9 @@
  *
  * What's here (client-safe):
  *   - Types: shared shapes for tools, turns, artifacts, addresses, etc.
+ *   - Money: `moneyFields` / `describeMoney` / `PRICE_FIELD_GUIDE` — the
+ *     `*Display` + `*MinorUnits` contract for money in tool payloads, so a
+ *     model can't quote a centAmount as a currency amount
  *   - Components: presentational React pieces (ChatActionChips, ChatComposer,
  *     ChatLauncher, ChatProductRow, ChatProductTile, ChatCartSummary,
  *     ChatOrderConfirmation, ChatAddressForm)
@@ -17,5 +20,6 @@
  */
 
 export * from './types.js';
+export * from './money.js';
 export * from './components/index.js';
 export * from './hooks/index.js';

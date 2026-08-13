@@ -31,6 +31,18 @@ export {
   type McpToolDefinition,
 } from './mcp-client.js';
 
+// Re-exported from the client-safe entrypoint: tool handlers are server code
+// and shouldn't have to import `/chat` (and its React components) to format a
+// price for a tool payload.
+export {
+  describeMoney,
+  moneyFields,
+  PRICE_FIELD_GUIDE,
+  type MoneyDescription,
+  type MoneyFields,
+  type MoneyFormatter,
+} from '../money.js';
+
 export { runChatTurn } from '../agent.js';
 export type {
   AgentMessage,
