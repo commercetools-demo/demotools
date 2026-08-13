@@ -24,6 +24,7 @@
  */
 
 import { runChatTurn, type ChatComplete } from '../agent.js';
+import { mergeToolSources, type ToolSource } from './mcp-tools.js';
 import type {
   ChatTurnRequest,
   Tool,
@@ -69,8 +70,21 @@ export interface MakeChatRouteOptions<Session, UiAction = UiActionBase> {
     cookieHeader: string;
   }) => unknown;
   buildSystemPrompt: (args: { session: Session; language: string }) => string;
-  tools: Tool[];
-  toolRegistry: ToolRegistry<unknown>;
+  /** Local, session-bound tools. Optional when `toolSource` supplies everything. */
+  tools?: Tool[];
+  toolRegistry?: ToolRegistry<unknown>;
+  /**
+   * Remote tools resolved per request — typically
+   * `createMcpToolSource(...).getToolSource` for a commercetools Managed MCP
+   * Server. Resolved once per turn and merged with `tools`/`toolRegistry`,
+   * which win on name collisions so a demo can shadow a remote tool locally.
+   *
+   * If the source throws (MCP server down, credentials rotated), the turn
+   * still runs with the local tools only.
+   */
+  toolSource?: () => Promise<ToolSource<unknown>>;
+  /** Called when `toolSource` fails, so the demo can log the degradation. */
+  onToolSourceError?: (error: unknown) => void;
   chatComplete: ChatComplete;
   /** Optional rate limit per session/IP. Default 20/min. Pass null to disable. */
   rateLimit?: { limit: number; windowMs: number } | null;
@@ -145,6 +159,25 @@ export function makeChatRoute<Session, UiAction = UiActionBase>(
 
       const systemPrompt = opts.buildSystemPrompt({ session, language });
 
+      const local: ToolSource<unknown> = {
+        tools: opts.tools ?? [],
+        toolRegistry: opts.toolRegistry ?? {},
+      };
+
+      let remote: ToolSource<unknown> | undefined;
+      if (opts.toolSource) {
+        try {
+          remote = await opts.toolSource();
+        } catch (e) {
+          // A remote tool source is an enhancement, not a hard dependency —
+          // degrade to local tools rather than failing the whole turn.
+          opts.onToolSourceError?.(e);
+          console.error('[chat] tool source unavailable:', (e as Error)?.message ?? e);
+        }
+      }
+
+      const { tools, toolRegistry } = mergeToolSources(remote, local);
+
       const { setCookies, ...rest } = await runChatTurn({
         messages,
         uiActions,
@@ -152,8 +185,8 @@ export function makeChatRoute<Session, UiAction = UiActionBase>(
         language,
         ctx,
         systemPrompt,
-        tools: opts.tools,
-        toolRegistry: opts.toolRegistry,
+        tools,
+        toolRegistry,
         chatComplete: opts.chatComplete,
         formatUiAction: opts.formatUiAction as never,
         model: opts.model,
