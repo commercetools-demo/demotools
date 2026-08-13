@@ -134,6 +134,44 @@ permissive object.
 If the MCP server is unreachable, `makeChatRoute` logs and runs the turn with
 the local tools only rather than failing outright.
 
+### Money in tool payloads (5.1)
+
+Never hand the model a bare `centAmount`. It cannot tell `950000` (pence) from
+`950,000` (pounds), and eventually it writes the second one — b2b-starter
+shipped a chat reply quoting **£1,100,000** for an excavator whose tile, from
+the same tool result, said **£11,000.00**. That demo already had two
+system-prompt rules forbidding exactly this. Prose can't disambiguate an
+integer; field names and pre-formatting can.
+
+```ts
+import { moneyFields, PRICE_FIELD_GUIDE } from '@cboyke/demotools/chat/server';
+
+const fmt = (m: Money) => formatMoney(m, displayLocale); // the demo's own formatter
+
+toolPayload = {
+  results: products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    ...moneyFields('price', p.price, fmt), // → priceDisplay: "£9,500.00"
+    //                                        priceMinorUnits: 950000
+    currency: p.price?.currencyCode ?? null,
+  })),
+  priceFieldGuide: PRICE_FIELD_GUIDE,
+};
+```
+
+- `<name>Display` — formatted by the demo's own `formatMoney`, so chat prose
+  and the product tile can never disagree. Quotable verbatim.
+- `<name>MinorUnits` — the exact integer, for arithmetic. Not readable as a
+  currency amount, which is the whole point of the name.
+- `PRICE_FIELD_GUIDE` — ship it in the payload under `priceFieldGuide`, so the
+  rule sits where the model reads the data. Keep your system-prompt rules too.
+
+`describeMoney(money, fmt)` returns `{ display, minorUnits, currency,
+fractionDigits }` when a demo needs the parts rather than spread-ready fields.
+Formatters that take `(centAmount, currency)` pass an adapter:
+`(m) => formatMoney(m.centAmount, m.currencyCode)`.
+
 ### What's NOT shared
 
 Per-demo divergence stays per-demo:
@@ -369,7 +407,13 @@ the `dist/` path.
   `ChatComposer`, `ChatLauncher`, `ChatProductRow`, `ChatProductTile`,
   `ChatCartSummary`, `ChatOrderConfirmation`, `ChatAddressForm`. New
   components require label props (i18n strings), hence the major bump.
-- `5.0.0` (planned) — `ChatProvider` / `useChat` context with generics
+- `5.0.x` — adds `/chat/server` Managed MCP Server support:
+  `createMcpToolSource`, `McpClient`, `mergeToolSources`, and
+  `toolSource` on `makeChatRoute`. Purely additive; `tools`/`toolRegistry`
+  became optional.
+- `5.1.x` — adds `moneyFields` / `describeMoney` / `PRICE_FIELD_GUIDE`:
+  the `*Display` + `*MinorUnits` contract for money in tool payloads.
+- `6.0.0` (planned) — `ChatProvider` / `useChat` context with generics
   over `UiAction` and artifact extras; slot-based `<ChatPanel>`;
   pluggable `<ChatMessage>` artifact router so demos can register their
   own renderers (`ChatStorePicker`, `ChatPaymentForm`, etc.) under
