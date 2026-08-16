@@ -24,7 +24,12 @@
  */
 
 import { runChatTurn, type ChatComplete } from '../agent.js';
-import { mergeToolSources, type ToolSource } from './mcp-tools.js';
+import { type ToolSource } from './mcp-tools.js';
+import {
+  readChatToolSourceMode,
+  resolveToolSources,
+  type ChatToolSourceMode,
+} from './tool-source.js';
 import type {
   ChatTurnRequest,
   Tool,
@@ -85,6 +90,22 @@ export interface MakeChatRouteOptions<Session, UiAction = UiActionBase> {
   toolSource?: () => Promise<ToolSource<unknown>>;
   /** Called when `toolSource` fails, so the demo can log the degradation. */
   onToolSourceError?: (error: unknown) => void;
+  /**
+   * The built-in commerce tool pack, from
+   * `createBuiltinToolSource` in `@cboyke/demotools/chat/tools`.
+   *
+   * Included when the tool-source mode is `builtin` (the default) or `both`, and
+   * shadowed by `tools`/`toolRegistry` on name collisions.
+   */
+  builtinToolSource?: ToolSource<unknown>;
+  /**
+   * Which tool sources to use. Defaults to reading
+   * `DEMOTOOLS_CHAT_TOOL_SOURCE` from the environment, which itself defaults to
+   * `builtin` — so MCP stays off unless a demo asks for it.
+   *
+   * Pass a literal to bypass the environment entirely (useful in tests).
+   */
+  toolSourceMode?: ChatToolSourceMode;
   chatComplete: ChatComplete;
   /** Optional rate limit per session/IP. Default 20/min. Pass null to disable. */
   rateLimit?: { limit: number; windowMs: number } | null;
@@ -159,24 +180,19 @@ export function makeChatRoute<Session, UiAction = UiActionBase>(
 
       const systemPrompt = opts.buildSystemPrompt({ session, language });
 
-      const local: ToolSource<unknown> = {
-        tools: opts.tools ?? [],
-        toolRegistry: opts.toolRegistry ?? {},
-      };
-
-      let remote: ToolSource<unknown> | undefined;
-      if (opts.toolSource) {
-        try {
-          remote = await opts.toolSource();
-        } catch (e) {
-          // A remote tool source is an enhancement, not a hard dependency —
-          // degrade to local tools rather than failing the whole turn.
-          opts.onToolSourceError?.(e);
-          console.error('[chat] tool source unavailable:', (e as Error)?.message ?? e);
-        }
-      }
-
-      const { tools, toolRegistry } = mergeToolSources(remote, local);
+      // Precedence, lowest to highest: MCP → built-in pack → this demo's own
+      // tools. A remote source is an enhancement, not a hard dependency: if it
+      // throws, the turn still runs on whatever remains.
+      const { tools, toolRegistry } = await resolveToolSources<unknown>({
+        mode: opts.toolSourceMode ?? readChatToolSourceMode(),
+        mcp: opts.toolSource,
+        builtin: opts.builtinToolSource,
+        local: {
+          tools: opts.tools ?? [],
+          toolRegistry: opts.toolRegistry ?? {},
+        },
+        onMcpError: opts.onToolSourceError,
+      });
 
       const { setCookies, ...rest } = await runChatTurn({
         messages,
