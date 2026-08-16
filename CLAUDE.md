@@ -78,15 +78,58 @@ real consumers — don't repeat it.
 |------------------------------------|-----------------------|----------------------------------------------|
 | `@cboyke/demotools`                | Client + server       | `JsonViewer`, `JsonModal`                    |
 | `@cboyke/demotools/chat`           | Client only           | Chat components, types, hooks                |
-| `@cboyke/demotools/chat/server`    | Server only           | Agent loop, route factories                  |
+| `@cboyke/demotools/chat/server`    | Server only           | Agent loop, route factories, MCP source, tool-source flag |
+| `@cboyke/demotools/chat/tools`     | Server only           | Built-in commerce tools; needs the CT SDK (optional peer dep) |
 | `@cboyke/demotools/tracker`        | Client + server       | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
 | `@cboyke/demotools/tracker/server` | Server only           | Gate helpers + `createTrackerProxyRoute` / `createGateRoute` |
 | `@cboyke/demotools/ct`             | Client + server       | `ProjectExpiredBanner`, `ProductSearchDisabledBanner` |
 | `@cboyke/demotools/ct/server`      | Server only           | `getSessionSecret`, project-trial-expired probe, Product-Search-disabled status |
 
-Keep `chat/server`, `tracker/server`, and `ct/server` out of `'use client'`
-files — they bundle server-only code (LLM driver / route handlers / server env
-+ fetches).
+Keep `chat/server`, `chat/tools`, `tracker/server`, and `ct/server` out of
+`'use client'` files — they bundle server-only code (LLM driver / CT SDK / route
+handlers / server env + fetches).
+
+## Chat tools: built-in vs MCP (`/chat/tools`)
+
+Two sources can supply the chat assistant's commerce tools, and
+`DEMOTOOLS_CHAT_TOOL_SOURCE` picks between them. **`builtin` is the default —
+MCP is never contacted unless the flag says `mcp` or `both`.** Unset, empty or
+unrecognised values resolve to `builtin`, deliberately: a flag typo must not turn
+on a remote dependency mid-demo.
+
+```ts
+// site/app/api/chat/route.ts
+import { makeChatRoute } from '@cboyke/demotools/chat/server';
+import { createBuiltinToolSource } from '@cboyke/demotools/chat/tools';
+
+export const POST = makeChatRoute({
+  builtinToolSource: createBuiltinToolSource(),  // reads CTP_* itself — no wiring
+  tools, toolRegistry,                           // the demo's write-side tools
+  getSession, buildSystemPrompt, chatComplete,
+});
+```
+
+Rules when integrating:
+
+- **Don't hand-write read-side commerce tools.** Catalog search, product detail,
+  categories, inventory, stores, cart read, order history and shipping options
+  are in the pack. Write-side tools (`add_to_cart`, `submit_order`) and pure-UI
+  tools (`view_product`, `suggest_actions`) stay in the app — they are bound to
+  the session cookie and to the demo's checkout flow.
+- **Credentials come from the environment**, the same `CTP_*` vars the storefront
+  reads. Nothing app-coupled. Pass `apiRoot` only to share the app's existing
+  client and avoid a second OAuth token.
+- **Precedence is `mcp` → `builtin` → the app's own tools.** To override one
+  packed tool, define it locally under the same name; local always wins. Do NOT
+  fork the pack to change one tool.
+- **Never accept a cart or customer id from the model.** The pack injects both
+  from the session. If you add a tool that reads shopper-scoped data, do the
+  same — a project-wide credential otherwise lets the model read anyone's cart.
+- **Use `buildRelevanceQuery` for any catalog search**, including on the MCP
+  path. A bare `fullText` returns 0 hits for "wool rug" against a catalog of
+  "Kalso Wool Rug", and without boosts a description match outranks a name match.
+- **Handlers must never throw.** `runChatTurn` calls them without a try/catch.
+  The pack returns `{ isError: true }`; do the same in app tools.
 
 ## commercetools resilience (`/ct`)
 

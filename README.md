@@ -11,13 +11,19 @@ The package exports these subpaths:
 |------------------------------------------|------------------------------------------------|
 | `@cboyke/demotools`                      | UI components (`JsonViewer`, `JsonModal`)      |
 | `@cboyke/demotools/chat`                 | Chat types, `ChatActionChips`                  |
-| `@cboyke/demotools/chat/server`          | Chat agent loop, route factory                 |
+| `@cboyke/demotools/chat/server`          | Chat agent loop, route factory, MCP tool source, tool-source flag |
+| `@cboyke/demotools/chat/tools`           | Built-in commerce tools + `buildRelevanceQuery` |
 | `@cboyke/demotools/tracker`              | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
 | `@cboyke/demotools/tracker/server`       | Gate helpers, `createTrackerProxyRoute`, `createGateRoute` |
+| `@cboyke/demotools/ct`                   | `ProjectExpiredBanner`, `ProductSearchDisabledBanner`, image config |
+| `@cboyke/demotools/ct/server`            | `getSessionSecret`, project-status + product-search resilience |
 
-The `chat/server` and `tracker/server` entrypoints are server-only — keep them
-out of `'use client'` files (the former bundles the LLM driver into the
-browser; the latter is Next.js route handlers).
+The `chat/server`, `chat/tools`, `tracker/server` and `ct/server` entrypoints are
+server-only — keep them out of `'use client'` files (they bundle the LLM driver,
+the commercetools SDK, or Next.js route handlers into the browser).
+
+`chat/tools` is the only subpath that needs `@commercetools/platform-sdk` and
+`@commercetools/ts-client` (optional peer deps). Everything else is SDK-free.
 
 See **CLAUDE.md → "Demo-tracker & gate"** for the full integration contract
 (the iOS Safari ITP fix, gated vs. track-only modes, and copy-paste wire-up).
@@ -133,6 +139,79 @@ permissive object.
 
 If the MCP server is unreachable, `makeChatRoute` logs and runs the turn with
 the local tools only rather than failing outright.
+
+### Built-in commerce tools + the tool-source flag (5.2)
+
+`/chat/tools` ships the eight read-side commerce tools as real code — catalog
+search, product detail, categories, inventory, stores, cart read, order history,
+shipping options — and `DEMOTOOLS_CHAT_TOOL_SOURCE` picks which source a demo
+uses. **The default is `builtin`; MCP is off unless asked for.**
+
+```ts
+// site/app/api/chat/route.ts
+import { makeChatRoute } from '@cboyke/demotools/chat/server';
+import { createBuiltinToolSource } from '@cboyke/demotools/chat/tools';
+
+export const POST = makeChatRoute({
+  builtinToolSource: createBuiltinToolSource(),  // ← no wiring
+  tools, toolRegistry,                           // your write-side tools
+  toolSource: mcp.getToolSource,                 // optional, only used if the flag says so
+  getSession, buildSystemPrompt, chatComplete,
+});
+```
+
+```bash
+DEMOTOOLS_CHAT_TOOL_SOURCE=builtin   # default — MCP never contacted
+DEMOTOOLS_CHAT_TOOL_SOURCE=mcp       # MCP only
+DEMOTOOLS_CHAT_TOOL_SOURCE=both      # merge; builtin wins on a name collision
+```
+
+Unset, empty or unrecognised values resolve to `builtin` — an unparseable flag
+must not silently turn on a remote dependency.
+
+**Credentials come from the environment, exactly as the storefront reads them:**
+`CTP_PROJECT_KEY`, `CTP_AUTH_URL`, `CTP_API_URL`, `CTP_CLIENT_ID`,
+`CTP_CLIENT_SECRET`, `CTP_SCOPES`, plus optional `CTP_STORE_KEY`,
+`CTP_DISTRIBUTION_CHANNEL_ID`, `CTP_CURRENCY`, `CTP_COUNTRY`, `CTP_LOCALE`. If
+the app can reach commercetools, so can the tools. Pass `apiRoot` to share the
+app's existing client instead of building a second one:
+
+```ts
+createBuiltinToolSource({ apiRoot })
+```
+
+Unlike the storefront's `lib/ct/client.ts`, the client is built **lazily on first
+use**, not at module load: this is a library, and importing it must not throw in
+a demo running MCP-only or in a build step that never calls a tool.
+
+`@commercetools/platform-sdk` and `@commercetools/ts-client` are **optional peer
+dependencies**, needed only by this subpath. `/chat`, `/chat/server`, `/tracker`
+and `/ct` stay SDK-free, so an MCP-only consumer is unaffected.
+
+**Precedence, lowest to highest: `mcp` → `builtin` → the app's own
+`tools`/`toolRegistry`.** So a demo can adopt the pack and still override one
+tool by defining it locally under the same name.
+
+#### Why this exists
+
+The read tools a Managed MCP Server exposes are generic, and generic loses
+relevance. The hand-written search built a boosted expression across
+`name` (×3), `searchKeywords` (×2), a slug wildcard and an exact SKU match; a
+bare `fullText` returns **0 hits** for "wool rug" against a catalog whose
+products are named "Kalso Wool Rug", and without boosts a description-level
+match outranks a name-level one — "wool rugs" came back as a nightstand, a bowl
+and a painting. `buildRelevanceQuery` is that expression, exported on its own so
+the MCP path can use it too rather than reinventing it per demo.
+
+`normalizeSearchTerm` handles the other half: the model reliably emits the
+Product Search wire shape (`{"fullText":{…},"limit":6}`) with the query hoisted
+out of `query`, so the server sees no filter and returns a match-all page. That
+reads as bad relevance; it is a dropped filter.
+
+Two invariants match the MCP path. Session identifiers are **injected, never
+accepted** — `view_cart` reads the session's cart and `find_my_orders` the
+session's customer, so a model passing someone else's id is ignored. And model
+strings are escaped before reaching a query predicate.
 
 ### Money in tool payloads (5.1)
 
@@ -413,6 +492,14 @@ the `dist/` path.
   became optional.
 - `5.1.x` — adds `moneyFields` / `describeMoney` / `PRICE_FIELD_GUIDE`:
   the `*Display` + `*MinorUnits` contract for money in tool payloads.
+- `5.2.x` — adds the `/chat/tools` subpath: the eight built-in read-side
+  commerce tools, `buildRelevanceQuery` / `normalizeSearchTerm`, and the
+  `DEMOTOOLS_CHAT_TOOL_SOURCE` flag (`builtin` default, so **MCP is off unless
+  asked for**) with `builtinToolSource` on `makeChatRoute`. Purely additive —
+  a 5.1 consumer that sets nothing keeps its exact behaviour, because a demo
+  only gets the pack by passing `builtinToolSource`.
+  `@commercetools/platform-sdk` + `@commercetools/ts-client` become optional
+  peer deps, required only by `/chat/tools`.
 - `6.0.0` (planned) — `ChatProvider` / `useChat` context with generics
   over `UiAction` and artifact extras; slot-based `<ChatPanel>`;
   pluggable `<ChatMessage>` artifact router so demos can register their

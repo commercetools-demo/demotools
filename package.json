@@ -2,7 +2,7 @@
   "name": "@cboyke/demotools",
   "author": "Chris Boyke",
   "description": "Reusable React components for building commercetools demos",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,6 +17,10 @@
     "./chat/server": {
       "types": "./dist/chat/server/index.d.ts",
       "default": "./dist/chat/server/index.js"
+    },
+    "./chat/tools": {
+      "types": "./dist/chat/tools/index.d.ts",
+      "default": "./dist/chat/tools/index.js"
     },
     "./tracker": {
       "types": "./dist/tracker/index.d.ts",
@@ -42,10 +46,14 @@
   ],
   "type": "module",
   "peerDependencies": {
+    "@commercetools/platform-sdk": ">=8",
+    "@commercetools/ts-client": ">=4",
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
+    "@commercetools/platform-sdk": "^8.27.0",
+    "@commercetools/ts-client": "^4.10.0",
     "@types/node": "^22.20.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -54,9 +62,12 @@
     "typescript": "^5.7.0"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "rm -rf dist && tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit --project tsconfig.test.json",
     "test": "tsc --noEmit --project tsconfig.test.json",
-    "prepublishOnly": "npm test && npm run build"
+    "test:runtime": "node --test test/runtime/*.test.mjs",
+    "verify": "npm run typecheck && npm run build && npm run test:runtime",
+    "prepublishOnly": "npm run verify"
   },
   "repository": {
     "type": "git",
@@ -66,5 +77,13 @@
   "bugs": {
     "url": "https://github.com/commercetools-demo/demotools/issues"
   },
-  "homepage": "https://github.com/commercetools-demo/demotools#readme"
+  "homepage": "https://github.com/commercetools-demo/demotools#readme",
+  "peerDependenciesMeta": {
+    "@commercetools/platform-sdk": {
+      "optional": true
+    },
+    "@commercetools/ts-client": {
+      "optional": true
+    }
+  }
 }

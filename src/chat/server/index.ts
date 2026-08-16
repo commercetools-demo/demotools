@@ -19,6 +19,21 @@ export {
   type McpToolSourceOptions,
 } from './mcp-tools.js';
 
+// The builtin-vs-MCP feature flag. The built-in pack itself lives at
+// `@cboyke/demotools/chat/tools` — it is a separate subpath so a demo running
+// MCP-only never pulls the pack's mappers into its bundle.
+export {
+  CHAT_TOOL_SOURCE_ENV,
+  DEFAULT_CHAT_TOOL_SOURCE,
+  isBuiltinEnabled,
+  isMcpEnabled,
+  parseChatToolSourceMode,
+  readChatToolSourceMode,
+  resolveToolSources,
+  type ChatToolSourceMode,
+  type ResolveToolSourcesInput,
+} from './tool-source.js';
+
 export {
   McpClient,
   McpError,
