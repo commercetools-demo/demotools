@@ -184,25 +184,22 @@ export function createGateRoute(opts: GateRouteOptions): {
     return new Response(null, { status: 303, headers });
   }
 
-  // Same as redirectTo, but with a Location that CANNOT inherit the request's
-  // query string.
+  // Redirect to an ABSOLUTE URL built from the forwarded host, so the target is
+  // never ambiguous. Host comes from the headers Netlify sets, falling back to the
+  // request's own URL for local dev.
   //
-  // Netlify's Next runtime resolves a relative `Location` against the incoming
-  // request URL and carries its search params over. Harmless for the POST path
-  // (that request has no query), but on `GET /api/gate?t=<grant>` returning
-  // `/en-us` actually redirects to `/en-us?t=<grant>` — and then the layout's
-  // own `redirect('/gate')` inherits it again. Observed on logitech.ct-builders.ai
-  // 2026-08-17: the grant ended up in the address bar, in browser history, in the
-  // Referer sent to every third-party script on the page, and persisted into the
-  // tracker's own `events.path` column.
+  // This does NOT stop a query string from following you across the redirect.
+  // Netlify's Next runtime copies the incoming request's search params onto the
+  // `Location` it emits — verified against logitech.ct-builders.ai 2026-08-17,
+  // where an explicitly query-free absolute `https://host/en-us` still went out as
+  // `https://host/en-us?t=<grant>`. Next's own dev/standalone server does not do
+  // this, so it cannot be reproduced locally. That is exactly why the grant is
+  // handed over as a POST form field and never as `?t=` — a request with no query
+  // gives Netlify nothing to copy. See redeemGrant().
   //
-  // An absolute URL leaves nothing to resolve. Host comes from the forwarded
-  // headers Netlify sets, falling back to the request's own URL for local dev.
-  //
-  // Resolving `path` against a base that carries NO query is what drops the
-  // grant — so don't "tidy up" by clearing `target.search` afterwards: that also
-  // ate the `?gate_error=1` on the error path and silently lost the gate's error
-  // message. `path`'s own query is meant to survive; the request's must not.
+  // Don't "tidy up" by clearing `target.search` here: that also ate the
+  // `?gate_error=1` on the error path and silently lost the gate's error message.
+  // `path`'s own query is meant to survive.
   function redirectToAbsolute(req: Request, path: string, token?: string): Response {
     const self = new URL(req.url);
     const host = req.headers.get('x-forwarded-host') || self.host;
@@ -216,6 +213,13 @@ export function createGateRoute(opts: GateRouteOptions): {
     if (!site) return redirectTo(opts.homePath);
 
     const form = await req.formData().catch(() => null);
+
+    // Admin gate bypass, handed over as a form FIELD rather than a query param —
+    // see redeemGrant() for why the tracker POSTs a self-submitting form instead
+    // of just linking here.
+    const grant = String(form?.get('grant') ?? '');
+    if (grant) return redeemGrant(req, grant);
+
     const email = String(form?.get('email') ?? '').trim();
     const password = String(form?.get('password') ?? '');
 
@@ -242,8 +246,20 @@ export function createGateRoute(opts: GateRouteOptions): {
   //
   // A CT admin browsing the tracker is already IAP-authenticated and can read
   // this site's password in the column next to the link, so re-prompting is
-  // friction, not security. The tracker mints a 5-minute grant JWT and sends the
-  // browser to `/api/gate?t=<grant>`.
+  // friction, not security. The tracker mints a 5-minute grant JWT and hands it
+  // over here.
+  //
+  // PREFERRED SHAPE: the tracker serves a self-submitting form that POSTs
+  // `grant=<jwt>`. The grant then never appears in a URL at all — not in the
+  // address bar, not in browser history, not in the `Referer` sent to the
+  // third-party scripts a storefront loads, and not in the tracker's own
+  // `events.path` column (all four were observed when it rode in `?t=`). A POST
+  // also has no query string for Netlify's Next runtime to copy onto the
+  // redirect, which is what defeated the earlier absolute-URL fix.
+  //
+  // `GET ?t=<grant>` is still accepted: it's what demotools 5.4.0 shipped, so a
+  // demo on 5.4.0 keeps working against a newer tracker, and it's fine on hosts
+  // that don't rewrite Location. New callers should POST.
   //
   // We can't verify the grant here (the tracker owns the signing secret), so we
   // trade it server-side at the tracker's `/auth/grant`, which validates the
