@@ -182,3 +182,78 @@ test('falls back to the request URL when no forwarded headers are present', asyn
 
   assert.equal(res.headers.get('location'), `https://mydemo.ct-builders.ai${HOME}`);
 });
+
+// --- POST hand-off (the shape the tracker actually uses) ---------------------
+//
+// The grant rides in a form field precisely so it never appears in a URL. On
+// Netlify that is not cosmetic: its Next runtime copies the request's search
+// params onto the Location it emits, so `?t=<grant>` survived the redirect and
+// reached the address bar, browser history, the Referer sent to third-party
+// scripts, and the tracker's events.path column. A POST has no query to copy.
+
+/** A form POST as the tracker's self-submitting page sends it. */
+function grantPost(token, fields = {}) {
+  const body = new FormData();
+  if (token !== null) body.set('grant', token);
+  for (const [k, v] of Object.entries(fields)) body.set(k, v);
+  const headers = new Headers({
+    'x-forwarded-host': 'mydemo.ct-builders.ai',
+    'x-forwarded-proto': 'https',
+  });
+  return new Request('https://internal.invalid/api/gate', { method: 'POST', body, headers });
+}
+
+test('POST grant: redeems and sets the gate cookie', async () => {
+  const { calls, fetchImpl } = stubTracker();
+  const { POST } = route();
+  const res = await withFetch(fetchImpl, () => POST(grantPost('g-token')));
+
+  assert.equal(res.status, 303);
+  assert.match(res.headers.get('set-cookie') ?? '', new RegExp(`demo_gate=${SESSION_JWT}`));
+  assert.equal(res.headers.get('location'), `https://mydemo.ct-builders.ai${HOME}`);
+  // Redeemed, then re-checked against our own slug — same as the GET path.
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].url, /\/session\?site=mydemo/);
+});
+
+test('POST grant takes precedence over any password in the same form', async () => {
+  // A grant is a stronger credential than the shared password and must not be
+  // downgraded into the /auth password flow if both fields somehow arrive.
+  const { calls, fetchImpl } = stubTracker();
+  const { POST } = route();
+  const res = await withFetch(fetchImpl, () =>
+    POST(grantPost('g-token', { email: 'someone@example.com', password: 'hunter2' })),
+  );
+
+  assert.match(res.headers.get('set-cookie') ?? '', new RegExp(`demo_gate=${SESSION_JWT}`));
+  assert.match(calls[0].url, /\/auth\/grant/);
+  assert.ok(!calls.some((c) => /\/auth$/.test(new URL(c.url).pathname)), 'must not hit /auth');
+});
+
+test('POST grant for a DIFFERENT site is rejected', async () => {
+  const { fetchImpl } = stubTracker({ sessionOk: false });
+  const { POST } = route();
+  const res = await withFetch(fetchImpl, () => POST(grantPost('foreign-grant')));
+
+  assert.match(res.headers.get('location'), /\/gate\?gate_error=1$/);
+  assert.equal(res.headers.get('set-cookie'), null);
+});
+
+test('POST without a grant still runs the ordinary password flow', async () => {
+  // Regression guard: the gate's own form must be unaffected by the grant branch.
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url: String(url), init });
+    const headers = new Headers();
+    headers.append('set-cookie', `dt_session=${SESSION_JWT}; Path=/`);
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  };
+  const { POST } = route();
+  const res = await withFetch(fetchImpl, () =>
+    POST(grantPost(null, { email: 'someone@example.com', password: 'hunter2' })),
+  );
+
+  assert.equal(res.status, 303);
+  assert.match(calls[0].url, /\/auth$/, 'password flow goes to /auth, not /auth/grant');
+  assert.match(res.headers.get('set-cookie') ?? '', new RegExp(`demo_gate=${SESSION_JWT}`));
+});

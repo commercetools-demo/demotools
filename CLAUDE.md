@@ -180,14 +180,32 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
-### Admin gate bypass (`/api/gate?t=<grant>`) — 5.4.0
+### Admin gate bypass — 5.4.0, reshaped in 5.5.0
 
 Clicking a site's URL in demo-tracker admin opens the demo with the gate already
 satisfied, instead of asking a CT admin to retype a password they can read in the
-adjacent column. The tracker mints a 5-minute grant JWT and sends the browser to
-`/api/gate?t=<grant>`; `createGateRoute`'s GET handles it.
+adjacent column. The tracker mints a 5-minute grant JWT and hands it to
+`createGateRoute`, which accepts it two ways:
 
-Three things there are load-bearing:
+- **`POST` with a `grant` form field** — what the tracker does, via a
+  self-submitting form. Preferred, and the reason is not style: see below.
+- **`GET ?t=<grant>`** — what 5.4.0 shipped. Still accepted so a demo on 5.4.0
+  keeps working against a newer tracker.
+
+**Never put the grant in a query string on Netlify.** Netlify's Next runtime
+copies the incoming request's search params onto the `Location` it emits, so
+`?t=<grant>` survives the redirect: the 303 to `/en-us` went out as
+`/en-us?t=<grant>`, and the `[locale]` layout's own `redirect('/gate')` inherited
+it again. On logitech.ct-builders.ai (2026-08-17) the grant consequently reached
+the address bar, browser history, the `Referer` sent to every third-party script
+the storefront loads, and was persisted into the tracker's own `events.path`
+column. **An absolute, explicitly query-free `Location` does not fix this** — that
+was tried first and Netlify still appended the query. Next's own dev/standalone
+server does *not* do this, so none of it reproduces locally; a local test showing a
+clean `Location` proves nothing about the deploy. A POST has no query string to
+copy, which is the actual fix.
+
+Three more things are load-bearing:
 
 1. **The `/session` re-check is not redundant.** The tracker's `/auth/grant`
    validates a grant against its OWN claims, not against the demo presenting it,
@@ -200,14 +218,14 @@ Three things there are load-bearing:
    redirecting an admin at it. Drop the flag and every demo silently reverts to a
    plain link (and the tracker is right to do so — an older demo would render raw
    JSON at the admin instead of opening).
-3. **The post-redemption redirect is absolute on purpose.** Netlify's Next runtime
-   resolves a relative `Location` against the request URL and *keeps its query
-   string*, so returning `/en-us` from `?t=<grant>` redirected to
-   `/en-us?t=<grant>` — leaking the grant into the address bar, browser history,
-   the `Referer` sent to every third-party script, and the tracker's own
-   `events.path` column (observed on logitech.ct-builders.ai 2026-08-17). Building
-   an absolute URL from the forwarded host leaves nothing to inherit. Don't also
-   clear `target.search`: that eats the `?gate_error=1` on the error path.
+3. **A grant beats a password in the same form.** If both a `grant` field and
+   `email`/`password` arrive on one POST, the grant wins — it must never be
+   silently downgraded into the shared-password flow.
+4. **The post-redemption redirect is absolute** so the target is unambiguous, and
+   `redirectToAbsolute` must NOT clear `target.search` — that eats the
+   `?gate_error=1` on the error path and the gate loses its error message. (The
+   absolute URL is *not* what keeps the grant out of the address bar; the POST
+   hand-off is. See above.)
 
 Covered by `test/runtime/gate-grant.test.mjs`.
 
