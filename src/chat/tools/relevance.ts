@@ -100,13 +100,78 @@ export function buildRelevanceQuery(
   return { or };
 }
 
-export interface ProductSearchBodyOptions extends RelevanceQueryOptions {
+/**
+ * Store scoping for B2B / B2B2C catalogs.
+ *
+ * A dealer storefront must only ever show the products that dealer actually
+ * sells. Getting this wrong is not a cosmetic bug — the assistant offers stock
+ * the dealer does not carry, at prices that are not theirs.
+ *
+ * Two mechanisms, and both are applied because they fail differently:
+ *
+ *   - `storeProjection` gives per-store product *tailoring* (names, images,
+ *     descriptions) and an *implicit* Product Selection restriction.
+ *   - the explicit `productSelections` filters below are belt-and-suspenders.
+ *     A store whose selection is attached but whose projection is missing or
+ *     misconfigured would silently fall back to the whole catalog, and "silently
+ *     shows everything" is the worst possible failure here.
+ *
+ * `variants.productSelections` is filtered alongside `productSelections`
+ * because a selection can be variant-scoped.
+ */
+export interface StoreScope {
+  /** Store key — sets `storeProjection` (tailoring + implicit selection). */
+  storeKey?: string | null;
+  /** Distribution channel — sets `priceChannel` for store-specific pricing. */
+  distributionChannelId?: string | null;
+  /** Product Selection id — restricts the catalog to the dealer's products. */
+  productSelectionId?: string | null;
+}
+
+export interface ProductSearchBodyOptions extends RelevanceQueryOptions, StoreScope {
   currency: string;
   country: string;
   limit?: number;
   offset?: number;
   /** Passed through to `sort`. Defaults to relevance (`score` desc). */
   sort?: Array<Record<string, unknown>>;
+}
+
+/** `productProjectionParameters` with store projection + price channel applied. */
+export function buildProjectionParameters(
+  currency: string,
+  country: string,
+  scope?: StoreScope,
+): Record<string, unknown> {
+  return {
+    priceCurrency: currency,
+    priceCountry: country,
+    expand: ['masterVariant.price.discounted.discount'],
+    ...(scope?.storeKey && {
+      storeProjection: scope.storeKey,
+      ...(scope.distributionChannelId && { priceChannel: scope.distributionChannelId }),
+    }),
+  };
+}
+
+/**
+ * Wrap a query expression in the store's Product Selection filters.
+ *
+ * Returns the expression unchanged when there is no selection, so a plain B2C
+ * catalog pays nothing for this.
+ */
+export function applyStoreScope(
+  query: ProductSearchQuery,
+  scope?: StoreScope,
+): ProductSearchQuery {
+  if (!scope?.productSelectionId) return query;
+  return {
+    and: [
+      query,
+      { exact: { field: 'productSelections', value: scope.productSelectionId } },
+      { exact: { field: 'variants.productSelections', value: scope.productSelectionId } },
+    ],
+  };
 }
 
 /**
@@ -120,19 +185,26 @@ export function buildProductSearchBody(
   term: string,
   opts: ProductSearchBodyOptions,
 ): Record<string, unknown> {
-  const { currency, country, limit = 6, offset = 0, sort, ...queryOpts } = opts;
+  const {
+    currency,
+    country,
+    limit = 6,
+    offset = 0,
+    sort,
+    storeKey,
+    distributionChannelId,
+    productSelectionId,
+    ...queryOpts
+  } = opts;
+  const scope: StoreScope = { storeKey, distributionChannelId, productSelectionId };
 
   return {
     limit,
     offset,
     markMatchingVariants: true,
-    productProjectionParameters: {
-      priceCurrency: currency,
-      priceCountry: country,
-      expand: ['masterVariant.price.discounted.discount'],
-    },
+    productProjectionParameters: buildProjectionParameters(currency, country, scope),
     sort: sort ?? [{ field: 'score', order: 'desc' }],
-    query: buildRelevanceQuery(term, queryOpts),
+    query: applyStoreScope(buildRelevanceQuery(term, queryOpts), scope),
   };
 }
 

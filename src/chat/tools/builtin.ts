@@ -36,7 +36,12 @@ import {
   type BuiltinSession,
   type CtApiRoot,
 } from './client.js';
-import { buildProductSearchBody, normalizeLimit, normalizeSearchTerm } from './relevance.js';
+import {
+  buildProductSearchBody,
+  buildProjectionParameters,
+  normalizeLimit,
+  normalizeSearchTerm,
+} from './relevance.js';
 import {
   cartPayload,
   categoryPayload,
@@ -326,6 +331,12 @@ async function run<Extra>(
         currency,
         country,
         limit: normalizeLimit(args.limit),
+        // Store scoping. On a plain B2C catalog these are all null and the body
+        // is unchanged; on a dealer storefront they are what keeps the
+        // assistant inside that dealer's catalogue and pricing.
+        storeKey: session.storeKey,
+        distributionChannelId: session.distributionChannelId,
+        productSelectionId: session.productSelectionId,
       });
 
       const { body: res } = await apiRoot
@@ -357,14 +368,19 @@ async function run<Extra>(
       const sku = typeof args.sku === 'string' ? args.sku : undefined;
       if (!id && !sku) return fail<Extra>('Pass either productId or sku.');
 
-      const priceArgs = { priceCurrency: currency, priceCountry: country };
+      // Same projection parameters as search, so a dealer sees the tailored
+      // name/image and their own price rather than the master catalogue's.
+      const priceArgs = buildProjectionParameters(currency, country, {
+        storeKey: session.storeKey,
+        distributionChannelId: session.distributionChannelId,
+      });
       let projection;
 
       if (id) {
         const { body } = await apiRoot
           .productProjections()
           .withId({ ID: id })
-          .get({ queryArgs: { staged: false, ...priceArgs } })
+          .get({ queryArgs: { staged: false, ...priceArgs } as never })
           .execute();
         projection = body;
       } else {
@@ -376,7 +392,7 @@ async function run<Extra>(
               limit: 1,
               staged: false,
               ...priceArgs,
-            },
+            } as never,
           })
           .execute();
         projection = body.results?.[0];
@@ -424,13 +440,17 @@ async function run<Extra>(
           : [];
       if (skus.length === 0) return fail<Extra>('Pass at least one SKU.');
 
+      // A store-scoped session asks about THAT store's shelf, not project-wide
+      // stock, so the supply channel is added to the predicate when present.
+      const channel = session.supplyChannelId ?? session.distributionChannelId;
+      const where = [`sku in (${skus.map(quote).join(', ')})`]
+        .concat(channel ? [`supplyChannel(id=${quote(channel)})`] : [])
+        .join(' and ');
+
       const { body } = await apiRoot
         .inventory()
         .get({
-          queryArgs: {
-            where: `sku in (${skus.map(quote).join(', ')})`,
-            limit: Math.min(skus.length * 4, 100),
-          },
+          queryArgs: { where, limit: Math.min(skus.length * 4, 100) },
         })
         .execute();
 
@@ -446,11 +466,17 @@ async function run<Extra>(
     }
 
     case 'find_stores': {
+      // `roles contains any (...)` alone is not a store filter — it matches
+      // every distribution/supply channel in the project, so a demo asking
+      // "which stores are near me" got back "Distribution Channel" and
+      // "Monthly Subscription". A physical location is a channel with an
+      // address; require one.
       const { body } = await apiRoot
         .channels()
         .get({
           queryArgs: {
-            where: 'roles contains any ("InventorySupply", "ProductDistribution")',
+            where:
+              'roles contains any ("InventorySupply", "ProductDistribution") and address is defined',
             limit: normalizeLimit(args.limit, 20, 50),
           },
         })

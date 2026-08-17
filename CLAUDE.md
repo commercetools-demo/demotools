@@ -122,6 +122,11 @@ Rules when integrating:
 - **Precedence is `mcp` → `builtin` → the app's own tools.** To override one
   packed tool, define it locally under the same name; local always wins. Do NOT
   fork the pack to change one tool.
+- **A dealer/B2B2C storefront MUST set `productSelectionId`** on the session
+  (or `CTP_PRODUCT_SELECTION_ID`). Without it the assistant offers products that
+  dealer does not sell, at the master catalogue's prices — and it looks like it
+  worked. Set `storeKey` and `distributionChannelId` too, for tailoring and
+  dealer pricing, and `supplyChannelId` so `check_stock` reads that store's shelf.
 - **Never accept a cart or customer id from the model.** The pack injects both
   from the session. If you add a tool that reads shopper-scoped data, do the
   same — a project-wide credential otherwise lets the model read anyone's cart.

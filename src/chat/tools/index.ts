@@ -42,13 +42,16 @@ export {
 } from './client.js';
 
 export {
+  applyStoreScope,
   buildProductSearchBody,
+  buildProjectionParameters,
   buildRelevanceQuery,
   normalizeLimit,
   normalizeSearchTerm,
   type ProductSearchBodyOptions,
   type ProductSearchQuery,
   type RelevanceQueryOptions,
+  type StoreScope,
 } from './relevance.js';
 
 export {

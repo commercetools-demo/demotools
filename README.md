@@ -213,6 +213,44 @@ accepted** — `view_cart` reads the session's cart and `find_my_orders` the
 session's customer, so a model passing someone else's id is ignored. And model
 strings are escaped before reaching a query predicate.
 
+### Store-scoped catalogs (5.3)
+
+A dealer storefront must only ever show the products that dealer sells. Set
+`productSelectionId` on the session (or `CTP_PRODUCT_SELECTION_ID`) and the pack
+scopes every read:
+
+```ts
+createBuiltinToolSource<ToolContext>({
+  session: (ctx) => ({
+    locale: ctx.language, currency: 'EUR', country: 'DE',
+    cartId: ctx.session.cartId, customerId: ctx.session.customerId,
+    storeKey: ctx.session.storeKey,                        // storeProjection
+    distributionChannelId: ctx.session.distributionChannelId, // priceChannel
+    productSelectionId: ctx.session.productSelectionId,    // catalogue restriction
+    supplyChannelId: ctx.session.supplyChannelId,          // store shelf for check_stock
+  }),
+});
+```
+
+Two mechanisms, applied together because they fail differently. `storeProjection`
+gives per-store tailoring and an **implicit** Product Selection restriction;
+the explicit `productSelections` / `variants.productSelections` filters are
+belt-and-suspenders. A store whose selection is attached but whose projection is
+missing would otherwise fall back to the whole catalog — and "silently shows
+everything" is the worst available failure. Both fields are filtered because a
+selection can be variant-scoped.
+
+`buildProjectionParameters` and `applyStoreScope` are exported for callers doing
+their own queries. On a plain B2C catalog every scope field is null and the
+emitted body is byte-identical to 5.2.
+
+Also in 5.3: `find_stores` now requires `address is defined`. Filtering channels
+by role alone matched every distribution/supply channel in the project, so
+"which stores are near me" returned *Distribution Channel* and *Monthly
+Subscription*. And `check_stock` narrows to the session's supply channel when
+there is one, so a store-scoped session asks about that store's shelf rather
+than project-wide stock.
+
 ### Money in tool payloads (5.1)
 
 Never hand the model a bare `centAmount`. It cannot tell `950000` (pence) from
@@ -500,6 +538,11 @@ the `dist/` path.
   only gets the pack by passing `builtinToolSource`.
   `@commercetools/platform-sdk` + `@commercetools/ts-client` become optional
   peer deps, required only by `/chat/tools`.
+- `5.3.x` — store scoping for B2B/B2B2C: `productSelectionId` +
+  `supplyChannelId` on `BuiltinSession`, `applyStoreScope` /
+  `buildProjectionParameters` exported, `find_stores` restricted to channels
+  with an address, `check_stock` scoped to the session's supply channel.
+  Additive — a B2C caller that sets no scope fields emits an identical query.
 - `6.0.0` (planned) — `ChatProvider` / `useChat` context with generics
   over `UiAction` and artifact extras; slot-based `<ChatPanel>`;
   pluggable `<ChatMessage>` artifact router so demos can register their

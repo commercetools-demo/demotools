@@ -127,6 +127,16 @@ export interface BuiltinSession {
   storeKey?: string | null;
   /** Distribution channel for store-specific pricing. */
   distributionChannelId?: string | null;
+  /**
+   * Product Selection id — restricts the catalog to the dealer's own products.
+   *
+   * REQUIRED for any dealer/B2B2C storefront. Without it the assistant will
+   * happily offer products that dealer does not sell, which is worse than an
+   * error because it looks like it worked.
+   */
+  productSelectionId?: string | null;
+  /** Supply channel for store-level inventory lookups. */
+  supplyChannelId?: string | null;
 }
 
 /** Defaults for price selection, overridden by whatever the session supplies. */
@@ -137,6 +147,8 @@ export function envSessionDefaults(): BuiltinSession {
     country: optionalEnv('CTP_COUNTRY', 'US'),
     storeKey: env().CTP_STORE_KEY ?? null,
     distributionChannelId: env().CTP_DISTRIBUTION_CHANNEL_ID ?? null,
+    productSelectionId: env().CTP_PRODUCT_SELECTION_ID ?? null,
+    supplyChannelId: env().CTP_SUPPLY_CHANNEL_ID ?? null,
   };
 }
 
@@ -169,5 +181,8 @@ export function defaultSessionFromContext(ctx: unknown): BuiltinSession {
     storeKey: str(s.storeKey) ?? defaults.storeKey,
     distributionChannelId:
       str(s.distributionChannelId) ?? defaults.distributionChannelId,
+    productSelectionId:
+      str(s.productSelectionId) ?? defaults.productSelectionId,
+    supplyChannelId: str(s.supplyChannelId) ?? defaults.supplyChannelId,
   };
 }
