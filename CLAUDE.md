@@ -180,6 +180,37 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
+### Admin gate bypass (`/api/gate?t=<grant>`) — 5.4.0
+
+Clicking a site's URL in demo-tracker admin opens the demo with the gate already
+satisfied, instead of asking a CT admin to retype a password they can read in the
+adjacent column. The tracker mints a 5-minute grant JWT and sends the browser to
+`/api/gate?t=<grant>`; `createGateRoute`'s GET handles it.
+
+Three things there are load-bearing:
+
+1. **The `/session` re-check is not redundant.** The tracker's `/auth/grant`
+   validates a grant against its OWN claims, not against the demo presenting it,
+   so a grant minted for demo A will redeem on demo B and hand back a
+   valid-but-foreign `dt_session` — opening the storefront and then 401-ing every
+   `t.js` `/event` with "site mismatch". Re-checking the returned session against
+   our own slug is what keeps a grant single-site.
+2. **`grant: true` on the GET payload is a capability marker, not state.** The
+   tracker probes this endpoint to decide whether a demo understands `?t=` before
+   redirecting an admin at it. Drop the flag and every demo silently reverts to a
+   plain link (and the tracker is right to do so — an older demo would render raw
+   JSON at the admin instead of opening).
+3. **The post-redemption redirect is absolute on purpose.** Netlify's Next runtime
+   resolves a relative `Location` against the request URL and *keeps its query
+   string*, so returning `/en-us` from `?t=<grant>` redirected to
+   `/en-us?t=<grant>` — leaking the grant into the address bar, browser history,
+   the `Referer` sent to every third-party script, and the tracker's own
+   `events.path` column (observed on logitech.ct-builders.ai 2026-08-17). Building
+   an absolute URL from the forwarded host leaves nothing to inherit. Don't also
+   clear `target.search`: that eats the `?gate_error=1` on the error path.
+
+Covered by `test/runtime/gate-grant.test.mjs`.
+
 ### iOS Safari ITP — why it's built this way (do not "simplify")
 
 The gate is enforced in a **Server Component**, NOT a Netlify edge function:

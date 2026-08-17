@@ -184,6 +184,32 @@ export function createGateRoute(opts: GateRouteOptions): {
     return new Response(null, { status: 303, headers });
   }
 
+  // Same as redirectTo, but with a Location that CANNOT inherit the request's
+  // query string.
+  //
+  // Netlify's Next runtime resolves a relative `Location` against the incoming
+  // request URL and carries its search params over. Harmless for the POST path
+  // (that request has no query), but on `GET /api/gate?t=<grant>` returning
+  // `/en-us` actually redirects to `/en-us?t=<grant>` — and then the layout's
+  // own `redirect('/gate')` inherits it again. Observed on logitech.ct-builders.ai
+  // 2026-08-17: the grant ended up in the address bar, in browser history, in the
+  // Referer sent to every third-party script on the page, and persisted into the
+  // tracker's own `events.path` column.
+  //
+  // An absolute URL leaves nothing to resolve. Host comes from the forwarded
+  // headers Netlify sets, falling back to the request's own URL for local dev.
+  //
+  // Resolving `path` against a base that carries NO query is what drops the
+  // grant — so don't "tidy up" by clearing `target.search` afterwards: that also
+  // ate the `?gate_error=1` on the error path and silently lost the gate's error
+  // message. `path`'s own query is meant to survive; the request's must not.
+  function redirectToAbsolute(req: Request, path: string, token?: string): Response {
+    const self = new URL(req.url);
+    const host = req.headers.get('x-forwarded-host') || self.host;
+    const proto = req.headers.get('x-forwarded-proto') || self.protocol.replace(':', '');
+    return redirectTo(new URL(path, `${proto}://${host}`).toString(), token);
+  }
+
   async function POST(req: Request): Promise<Response> {
     const site = getSlug();
     // Gate not configured (no slug) — nothing to validate against; let them in.
@@ -211,9 +237,70 @@ export function createGateRoute(opts: GateRouteOptions): {
     }
   }
 
+  // Redeem a demo-tracker ADMIN GRANT — the "click the site link in demo-tracker
+  // and land on the demo" path.
+  //
+  // A CT admin browsing the tracker is already IAP-authenticated and can read
+  // this site's password in the column next to the link, so re-prompting is
+  // friction, not security. The tracker mints a 5-minute grant JWT and sends the
+  // browser to `/api/gate?t=<grant>`.
+  //
+  // We can't verify the grant here (the tracker owns the signing secret), so we
+  // trade it server-side at the tracker's `/auth/grant`, which validates the
+  // signature, creates the visitor + session rows, and hands back a `dt_session`
+  // — the same token POST above scrapes, so the proxy keeps authenticating
+  // `t.js` unchanged.
+  //
+  // The `/session` re-check is NOT redundant. `/auth/grant` validates a grant
+  // against its OWN claims, not against the demo presenting it, so a grant minted
+  // for a DIFFERENT demo would redeem successfully and hand back a
+  // valid-but-foreign session — opening this storefront and then 401-ing every
+  // `t.js` `/event` with "site mismatch". Confirming the session belongs to OUR
+  // slug is what keeps a grant single-site.
+  async function redeemGrant(req: Request, token: string): Promise<Response> {
+    const site = getSlug();
+    // Gate not configured (no slug) — nothing gated, nothing to redeem.
+    if (!site) return redirectToAbsolute(req, opts.homePath);
+
+    try {
+      const r = await fetch(`${getOrigin()}/auth/grant?t=${encodeURIComponent(token)}&r=%2F`, {
+        redirect: 'manual',
+        cache: 'no-store',
+      });
+      const session = (r.headers.get('set-cookie') ?? '').match(/dt_session=([^;]+)/)?.[1];
+      // Shape-check for the same reason the proxy does: it forwards only a
+      // JWT-shaped value, so anything else would set a cookie that opens the gate
+      // but leaves t.js unauthenticated.
+      if (!session || !JWT_RE.test(session)) return redirectToAbsolute(req, errorPath);
+
+      const check = await fetch(`${getOrigin()}/session?site=${encodeURIComponent(site)}`, {
+        headers: { cookie: `${TRACKER_COOKIE}=${session}` },
+        cache: 'no-store',
+      });
+      if (!check.ok) return redirectToAbsolute(req, errorPath);
+
+      return redirectToAbsolute(req, opts.homePath, session);
+    } catch {
+      return redirectToAbsolute(req, errorPath);
+    }
+  }
+
+  // Two jobs, split on the presence of `?t=`:
+  //
+  //   /api/gate?t=<grant>  redeem an admin grant (above) and enter the storefront.
+  //   /api/gate            the /gate self-heal check.
+  //
+  // `grant: true` is a CAPABILITY MARKER, not state: the tracker probes this
+  // endpoint to decide whether this demo understands `?t=` before it sends an
+  // admin here. A demo on an older demotools answers `{ authed }` only, and the
+  // tracker falls back to a plain link rather than redirecting an admin to a URL
+  // that would render raw JSON at them. Don't drop the flag.
   async function GET(req: Request): Promise<Response> {
+    const token = new URL(req.url).searchParams.get('t');
+    if (token) return redeemGrant(req, token);
+
     const authed = !!parseCookies(req.headers.get('cookie'))[GATE_COOKIE];
-    return new Response(JSON.stringify({ authed }), {
+    return new Response(JSON.stringify({ authed, grant: true }), {
       headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
     });
   }
