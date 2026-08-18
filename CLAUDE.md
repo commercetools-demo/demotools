@@ -229,6 +229,59 @@ Three more things are load-bearing:
 
 Covered by `test/runtime/gate-grant.test.mjs`.
 
+### Page-builder preview carve-out — 5.6.0
+
+A gated demo used to answer `307 → /gate` for every URL Site Builder's editor
+loaded, so the WYSIWYG canvas showed the email form instead of the storefront.
+`gateVerdict` now lets the editor's preview iframe through without a gate cookie.
+
+**Why it cannot just read `?pb_preview=<token>`.** The token is a query param, the
+gate runs in `app/[locale]/layout.tsx`, and Next never gives a layout
+`searchParams` — only pages get those. The usual escape hatch is middleware, but
+per the ITP section below `@netlify/plugin-nextjs` does not deploy Next 16's
+`proxy.ts` as a routed edge handler, so on a Netlify deploy **nothing on the
+request path sees the URL before the layout renders**. Headers are what a layout
+does get, so the carve-out is built from those — two rules, because a framed
+preview makes two different kinds of request:
+
+1. **The frame's own document** — `Sec-Fetch-Dest: iframe` plus a `Referer` origin
+   in `allowedOrigins` (`PB_ALLOWED_ORIGINS`, already trusted to drive the editing
+   bridge over postMessage, so no new configuration appears). Cross-site `Referer`
+   is trimmed to the framing origin, so the token is simply not available here.
+2. **Everything that document then fetches for itself** — RSC payloads for
+   in-frame navigation. Same-origin, so `Referer` carries the *full* preview URL
+   and the real token is compared against `previewToken` (`PB_PREVIEW_TOKEN`).
+   This is the strong rule: it verifies the secret, not the shape of the request.
+
+Deliberately loose in rule 1: a framed request with **no `Referer` at all** passes
+(a `no-referrer` framing document), and absent `Sec-Fetch-*` falls back to the
+allowlisted `Referer` alone (WebKit). This gate is email capture for a demo, not
+access control on anything private — being strict costs a blank canvas mid-demo;
+being loose costs someone who already knows the URL iframing it to skip the form.
+
+Two boundaries are deliberate and should not be "tidied":
+
+- **Take `{ allowedOrigins, previewToken }`, never import
+  `@commercetools-demo/page-builder`.** A gated demo with no page builder must not
+  acquire the editor as a dependency just to keep its gate working. `previewParam`
+  defaults to `'pb_preview'`; a consumer that *does* have the dep should pass
+  `PB_PREVIEW_PARAM` so a rename there breaks one repo loudly instead of leaving a
+  silently dead carve-out in every demo.
+- **Take a `Headers` (or a `(name) => string | null` getter), never
+  `next/headers`.** Same split as the rest of `tracker/server`: the library stays
+  framework-agnostic, the app passes what it already awaited.
+
+- **`gateRedirectPath` puts the reason on the `Location`.** From inside an iframe a
+  bare `307 → /gate` is indistinguishable from a broken deploy — the parent
+  document cannot read the response body, status, or cookies across origins, and
+  `Location` is the one part it *can* see. So a non-document request redirects to
+  `/gate?pb=<sec-fetch-dest>`; an ordinary visitor still gets a clean `/gate`.
+
+Omit `preview` and `gateVerdict` degrades to the plain cookie check, so a demo
+with no page builder gets no iframe bypass at all. Covered by
+`test/runtime/gate-preview.test.mjs` — none of it reproduces locally, since the
+gate is inert unless `NODE_ENV === 'production'`.
+
 ### iOS Safari ITP — why it's built this way (do not "simplify")
 
 The gate is enforced in a **Server Component**, NOT a Netlify edge function:
@@ -267,6 +320,22 @@ export async function isDemoGateOpen() {
   if (!isGateEnabled()) return true;
   return isGateOpen((await cookies()).get(GATE_COOKIE)?.value);
 }
+
+// …and WITH a page builder, swap isGateOpen for gateVerdict (see the carve-out above):
+import { headers } from 'next/headers';
+import { gateVerdict, gateRedirectPath, type GateVerdict } from '@cboyke/demotools/tracker/server';
+import { getPageBuilderConfig, PB_PREVIEW_PARAM } from '@commercetools-demo/page-builder';
+export { gateRedirectPath };
+export async function demoGateVerdict(): Promise<GateVerdict> {
+  const { allowedOrigins, previewToken } = getPageBuilderConfig();
+  return gateVerdict({
+    gateCookieValue: (await cookies()).get(GATE_COOKIE)?.value,
+    headers: await headers(),
+    preview: { allowedOrigins, previewToken, previewParam: PB_PREVIEW_PARAM },
+  });
+}
+// app/[locale]/layout.tsx:
+//   if ((await demoGateVerdict()) === 'blocked') redirect(gateRedirectPath(await headers()));
 
 // site/app/gate/page.tsx  (gated only)
 import { DemoGate } from '@cboyke/demotools/tracker';
