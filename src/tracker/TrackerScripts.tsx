@@ -32,7 +32,7 @@ export interface TrackerScriptsProps {
  * derives its API base from `document.currentScript`, so every follow-up call
  * it makes stays first-party too.
  *
- * Renders nothing unless both `NEXT_PUBLIC_DEMO_TRACKER_URL` and a slug are set.
+ * Renders nothing unless a slug is configured.
  */
 export default function TrackerScripts({
   context = {},
@@ -41,7 +41,21 @@ export default function TrackerScripts({
   basePath = TRACKER_BASE_PATH,
 }: TrackerScriptsProps) {
   const slug = site ?? trackerSite();
-  if (!process.env.NEXT_PUBLIC_DEMO_TRACKER_URL || !slug) return null;
+  // Slug only. This used to ALSO require NEXT_PUBLIC_DEMO_TRACKER_URL, which is
+  // documented as optional everywhere else (`trackerOrigin()` defaults it to
+  // https://tracker.ctdemo.net) — and which this component doesn't even use: the
+  // script is loaded from the first-party proxy path, and `t.js` derives its API
+  // base from `document.currentScript`. So the tracker origin never appears in
+  // the client at all.
+  //
+  // The cost of that stray condition was silent: the GATE keys off the slug
+  // alone (`isGateEnabled()`), so a demo set up exactly as documented — slug
+  // set, URL omitted — gated correctly and recorded ZERO analytics. It looked
+  // like an unused demo rather than a broken one. Found on bridge-patient /
+  // bridge-provider (2026-08-20): real customer visitors had authenticated
+  // through the gate on 2026-07-30 (session rows exist, attributed to
+  // @mckesson.com addresses) and not one event was ever recorded.
+  if (!slug) return null;
   return (
     <>
       <script
@@ -49,7 +63,17 @@ export default function TrackerScripts({
           __html: `window.dt={context:${JSON.stringify(context)},gate:${gate ? 'true' : 'false'}};`,
         }}
       />
-      <script async src={`${basePath}/t.js?site=${slug}`} />
+      {/*
+        `defer`, NOT `async`: React 19 HOISTS async scripts, which reorders this
+        tag ABOVE the inline `window.dt` assignment in the emitted HTML — the
+        exact opposite of the ordering this component's contract requires (t.js
+        reads window.dt.context synchronously to attach the first pageview to the
+        right store/customer). A deferred script is left in place and runs after
+        parsing, so the inline config always wins. Verified by
+        test/runtime/tracker-scripts.test.mjs, which asserts the order in the
+        rendered markup.
+      */}
+      <script defer src={`${basePath}/t.js?site=${slug}`} />
     </>
   );
 }
