@@ -180,6 +180,36 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
+### Analytics silently off without the gate noticing — fixed in 5.7.1
+
+`TrackerScripts` used to require **both** a slug and
+`NEXT_PUBLIC_DEMO_TRACKER_URL`. That second variable is documented as optional
+right here (`trackerOrigin()` defaults it to `https://tracker.ctdemo.net`) and
+the component never uses it: the script loads from the first-party proxy path,
+and `t.js` derives its API base from `document.currentScript`, so the tracker
+origin never reaches the client at all.
+
+The failure was invisible, because the **gate** keys off the slug alone
+(`isGateEnabled()`). A demo set up exactly as documented — slug set, URL omitted
+— gated correctly and recorded **zero events**, which in the tracker's reports
+looks like a demo nobody visited rather than a demo that is broken. Found on
+`bridge-patient` / `bridge-provider`: real customer visitors had passed the gate
+on 2026-07-30 (session rows exist, attributed to `@mckesson.com` addresses) and
+not one event was ever recorded. If a site shows sessions but no events, this is
+the first thing to check.
+
+Two rules follow:
+
+- **The slug is the only required env var.** Anything that keys off more than
+  the slug will disagree with the gate, and disagreeing silently is the whole
+  problem.
+- **The `t.js` tag is `defer`, never `async`.** React 19 hoists `async` scripts,
+  which reorders the tag ABOVE the inline `window.dt` assignment in the emitted
+  HTML — the reverse of what this component requires, since `t.js` reads
+  `window.dt.context` synchronously to attach the first pageview to the right
+  store/customer. `defer` is left in place. Both properties are pinned by
+  `test/runtime/tracker-scripts.test.mjs`.
+
 ### Gate copy — 5.7.0
 
 The gate asks for **two credentials belonging to two different parties**, and
