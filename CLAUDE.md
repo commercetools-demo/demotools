@@ -180,6 +180,51 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
+### Gate copy — 5.7.0
+
+The gate asks for **two credentials belonging to two different parties**, and
+until 5.7.0 it labelled them "Email" and "Password" under
+*"Enter your work email and the site password to continue."* — which reads
+exactly like a sign-in form for an account the visitor does not have. Real
+visitors consistently read it as "username and password", tried a password of
+their own, and asked which account to use.
+
+The strings now live in [`src/tracker/gate-copy.ts`](src/tracker/gate-copy.ts)
+(`DEMO_GATE_COPY`, exported from `@cboyke/demotools/tracker`), and each field
+says whose credential it is:
+
+- **"Your email address"** — *"Any work email. There's no account to create —
+  this just tells us who's viewing the demo."*
+- **"Shared demo password"** — *"Not one of your own passwords. Everyone with
+  access uses the same one — ask whoever sent you the link."*
+- The failed-submit message blames the **password** on a closed site (the only
+  thing that can actually be wrong there) instead of "Invalid email or
+  password", and an open site gets a separate message about the email.
+
+Override per demo with `<DemoGate copy={{ … }} />` (`Partial<DemoGateCopy>`;
+blank and omitted keys fall back), but **normally don't** — the whole point is
+one wording everywhere. The older `title` prop still works and beats
+`copy.title`.
+
+**Three surfaces, one wording, and only this one is React.** The tracker
+renders the other two as plain HTML strings and cannot import this module (it is
+not a React app, and the import would drag React peer deps into the service), so
+it duplicates the strings with a comment pointing here:
+
+| Surface | Lives in | Reaches demos when |
+|---|---|---|
+| `DemoGate` (app gate — most demos) | this package | the demo bumps `@cboyke/demotools` and redeploys |
+| generated Netlify edge function | demo-tracker `src/edge-gate-template.ts` | the site is **re-provisioned** (the bundle is baked) |
+| `t.js` in-page overlay | demo-tracker `src/tracker-snippet.ts` | immediately — `t.js` is served live |
+
+Change the wording here and in those two files in the same session. Nothing else
+needs touching: no starter or fork overrides any of it (they all render a bare
+`<DemoGate homePath=… open=… />`).
+
+Covered by `test/runtime/gate-copy.test.mjs`, which renders the component and
+asserts the two ownership hints, the open-site variant, and that the word
+"username" appears nowhere.
+
 ### Admin gate bypass — 5.4.0, reshaped in 5.5.0
 
 Clicking a site's URL in demo-tracker admin opens the demo with the gate already
