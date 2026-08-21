@@ -52,8 +52,8 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@commercetools/platform-sdk": "^8.27.0",
-    "@commercetools/ts-client": "^4.10.0",
+    "@commercetools/platform-sdk": "^9.4.0",
+    "@commercetools/ts-client": "^5.0.2",
     "@types/node": "^22.20.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
