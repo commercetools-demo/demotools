@@ -16,8 +16,15 @@ export interface TrackerContext {
   [key: string]: unknown;
 }
 
-/** The `window.dt` global installed by the tracker script (`t.js`). */
+/**
+ * The `window.dt` global. Two stages: `<TrackerScripts>` writes an inline
+ * `{ context, gate }` during parse, and `t.js` later adds `track`.
+ *
+ * `track` is therefore OPTIONAL — declaring it required is what let
+ * `dt?.track(...)` typecheck against a stage-1 `window.dt` and silently throw
+ * at runtime. Keep it optional so the compiler forces a `typeof` guard.
+ */
 export interface Dt {
-  track: (type: string, props?: TrackProps) => void;
+  track?: (type: string, props?: TrackProps) => void;
   context?: TrackerContext;
 }
