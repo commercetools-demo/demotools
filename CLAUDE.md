@@ -449,3 +449,27 @@ Env: `NEXT_PUBLIC_DEMO_TRACKER_SITE` (slug — drives gate + script) and optiona
 gate is inert unless `NODE_ENV === 'production'` AND a slug is set. Fire
 semantic events with `track(event, props)`; use `<TrackEvent>` from Server
 Components; use `trackBeacon()` before a hard navigation (e.g. one-click login).
+
+**`window.dt` has two stages, and `track` only exists in the second.**
+`<TrackerScripts>` writes an inline `window.dt = { context, gate }` during parse;
+the deferred `t.js` later replaces it with `Object.assign({}, existing, { track })`.
+React can run effects BEFORE a deferred script executes — the bigger the streamed
+document, the wider that window — so a `<TrackEvent>` on a heavy listing page
+routinely fires in stage 1. Through 5.7.1 the shim did `dt?.track(event, props)`,
+which guards `dt` being absent but NOT `track` being absent: it threw a TypeError
+into a bare catch and the event was silently dropped. Client-side navigations
+(long after t.js) worked, hard loads mostly didn't — a demo showed hundreds of
+pageviews and single-digit `view_category` / `view_product` counts, which reads as
+"nobody used the demo" rather than "tracking is broken". Verified on
+`thegoodstore` 2026-08-21: hard-loaded category pages recorded a pageview and no
+`view_category`; the same page reached by clicking a nav link recorded both.
+
+So: `Dt.track` is deliberately **optional** in `types.ts` (so the compiler forces
+a `typeof` guard), and `track()` falls back to POSTing the event itself to the
+same first-party `/api/tracker/event` proxy t.js would have used — same payload,
+authenticated server-side by the `demo_gate` cookie, so it works from the first
+millisecond with no dependence on t.js. Pinned by
+[`test/runtime/track.test.mjs`](test/runtime/track.test.mjs) (4 of its 7 cases
+fail against the 5.7.1 shim). Don't "simplify" the guard back to optional
+chaining, and don't assume t.js's internal queue covers this — that queue only
+exists once t.js has run.
