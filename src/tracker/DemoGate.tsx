@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { type DemoGateCopy, resolveGateCopy } from './gate-copy.js';
+import {
+  type DemoGateCopy,
+  type GateSiteType,
+  gateCopyForSiteType,
+  resolveGateCopy,
+} from './gate-copy.js';
 
 // Simple but real email shape check — a local part, an @, and a dotted domain
 // whose TLD is at least two chars. Catches "a@b" / "a@b." client-side instead
@@ -22,9 +27,16 @@ export interface DemoGateProps {
   /** Panel heading. Shorthand for `copy.title`. Defaults to "Demo access". */
   title?: string;
   /**
-   * Per-demo wording overrides. Anything omitted falls back to
-   * `DEMO_GATE_COPY` — which is what every demo should normally use, since the
-   * defaults are the whole point (see `gate-copy.ts`).
+   * Which base wording to start from. `content` gets the evaluation-room set
+   * ("Evaluation room access"), anything else gets the demo set. Pass the
+   * tracker's `sites.site_type` straight through; the edge and `t.js` gates
+   * select the same way, so all three surfaces agree.
+   */
+  siteType?: GateSiteType;
+  /**
+   * Per-demo wording overrides, merged over the base chosen by `siteType`.
+   * Anything omitted falls back to that base — which is what every demo should
+   * normally use, since the defaults are the whole point (see `gate-copy.ts`).
    */
   copy?: Partial<DemoGateCopy>;
   /** Backdrop CSS background. Defaults to a light neutral. */
@@ -69,11 +81,15 @@ export default function DemoGate({
   open = false,
   action = '/api/gate',
   title,
+  siteType,
   copy,
   background = '#f4f4f5',
   accent = '#0f172a',
 }: DemoGateProps) {
-  const t = resolveGateCopy(title ? { ...copy, title } : copy);
+  const t = resolveGateCopy(
+    title ? { ...copy, title } : copy,
+    gateCopyForSiteType(siteType),
+  );
 
   // Read the `?gate_error=1` param client-side (this is a 'use client'
   // component rendered under a force-dynamic route). Done via window.location
