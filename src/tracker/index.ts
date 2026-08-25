@@ -5,7 +5,14 @@
 export { track, trackBeacon } from './track.js';
 export { default as TrackEvent } from './TrackEvent.js';
 export { default as DemoGate, type DemoGateProps } from './DemoGate.js';
-export { DEMO_GATE_COPY, resolveGateCopy, type DemoGateCopy } from './gate-copy.js';
+export {
+  DEMO_GATE_COPY,
+  EVAL_ROOM_GATE_COPY,
+  gateCopyForSiteType,
+  resolveGateCopy,
+  type DemoGateCopy,
+  type GateSiteType,
+} from './gate-copy.js';
 export { default as TrackerScripts, type TrackerScriptsProps } from './TrackerScripts.js';
 
 export {

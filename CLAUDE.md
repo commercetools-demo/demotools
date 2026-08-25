@@ -236,24 +236,46 @@ blank and omitted keys fall back), but **normally don't** — the whole point is
 one wording everywhere. The older `title` prop still works and beats
 `copy.title`.
 
-**Three surfaces, one wording, and only this one is React.** The tracker
-renders the other two as plain HTML strings and cannot import this module (it is
-not a React app, and the import would drag React peer deps into the service), so
-it duplicates the strings with a comment pointing here:
+### Two wordings, keyed on `site_type` — 5.9.0
+
+An **evaluation room** is not a demo. The visitor is a prospect opening a
+curated response to their own RFP, often forwarded by a colleague, and
+"Demo access" is the first thing they read. So there are two base sets:
+
+| `sites.site_type` | Base copy | Heading |
+|---|---|---|
+| `content` (evaluation rooms, content microsites) | `EVAL_ROOM_GATE_COPY` | "Evaluation room access" |
+| anything else (storefront demos) | `DEMO_GATE_COPY` | "Demo access" |
+
+`gateCopyForSiteType(siteType)` does the picking; `<DemoGate siteType="content" />`
+selects the base, and `copy` overrides merge over whichever base was chosen.
+Only the noun changes — both sets keep the whose-credential hints, because the
+account-login misreading is just as likely on a room.
+
+**Three surfaces, one wording, one import.** All three read the same module:
 
 | Surface | Lives in | Reaches demos when |
 |---|---|---|
 | `DemoGate` (app gate — most demos) | this package | the demo bumps `@cboyke/demotools` and redeploys |
-| generated Netlify edge function | demo-tracker `src/edge-gate-template.ts` | the site is **re-provisioned** (the bundle is baked) |
+| generated Netlify edge function | demo-tracker `src/edge-gate-template.ts` | the site's edge bundle is **regenerated and redeployed** |
 | `t.js` in-page overlay | demo-tracker `src/tracker-snippet.ts` | immediately — `t.js` is served live |
 
-Change the wording here and in those two files in the same session. Nothing else
-needs touching: no starter or fork overrides any of it (they all render a bare
-`<DemoGate homePath=… open=… />`).
+The tracker imports the strings from the React-free
+**`@cboyke/demotools/tracker/gate-copy`** subpath export — *not* the `./tracker`
+barrel, which re-exports `DemoGate` and would pull the react/react-dom peer deps
+into a Fastify service. Change the wording here, bump the tracker's dependency,
+and all three surfaces move together.
+
+> Until 5.9.0 this section claimed the tracker "cannot import this module" and
+> told you to duplicate the strings by hand in the same session. That was never
+> true: `gate-copy.ts` has no imports at all and React is only a peer dep of
+> `DemoGate`/`TrackEvent` — the only barrier was the missing subpath export.
+> Three hand-mirrored copies is how they drift, so don't reintroduce them.
 
 Covered by `test/runtime/gate-copy.test.mjs`, which renders the component and
-asserts the two ownership hints, the open-site variant, and that the word
-"username" appears nowhere.
+asserts the two ownership hints, the open-site variant, that an evaluation room
+never says "demo" (and that a demo still does), that both sets carry the same
+keys, and that the word "username" appears nowhere.
 
 ### Admin gate bypass — 5.4.0, reshaped in 5.5.0
 
