@@ -3,20 +3,25 @@
 Comprehensive inventory of implemented features in this demo. Source of truth
 for what exists in the codebase — keep it updated when features change.
 
-_Last generated: 2026-08-24 by feature-doc._
+_Last generated: 2026-08-31 by feature-doc._
 
 `@cboyke/demotools` is not a demo app itself — it is a published npm library
-(`@cboyke/demotools`, currently `5.8.0`) of reusable React components and
+(`@cboyke/demotools`, currently `5.9.0`) of reusable React components and
 server-side helpers, shared across the commercetools pre-sales demo repos
 (b2b-starter, b2c-starter, bridge-provider/patient, etc.) via subpath exports.
 No build/dev/test commands were run to produce this document.
 
 ## Package shape & subpaths
 
-- Six independently-importable subpaths, each with its own `dist/` entry
-  point (`src/index.ts`, `src/chat/index.ts`, `src/chat/server/index.ts`,
-  `src/chat/tools/index.ts`, `src/tracker/index.ts`,
-  `src/tracker/server/index.ts`, `src/ct/index.ts`, `src/ct/server/index.ts`).
+- Nine independently-importable subpaths (`package.json` → `exports`), each
+  with its own `dist/` entry point: `src/index.ts`, `src/chat/index.ts`,
+  `src/chat/server/index.ts`, `src/chat/tools/index.ts`,
+  `src/tracker/index.ts`, `src/tracker/gate-copy.ts`,
+  `src/tracker/server/index.ts`, `src/ct/index.ts`, `src/ct/server/index.ts`.
+  `tracker/gate-copy` is the one non-barrel subpath — a standalone,
+  dependency-free module carved out so the non-React demo-tracker service can
+  import the gate wording directly (see below) without pulling in `DemoGate`'s
+  react/react-dom peer deps via the `./tracker` barrel.
 - Client-safe vs. server-only boundary is enforced by keeping server code
   (LLM driver, commercetools SDK client, Next.js route handlers, server env
   reads) behind `/server` subpaths, so client bundles never pull it in.
@@ -169,6 +174,17 @@ demo consuming the package.
   email + shared-password gate UI, with copy that explicitly distinguishes
   "your email" (no account) from "the shared demo password" (ask whoever sent
   the link), overridable per demo via a `copy` prop.
+- **Two base wordings, keyed on site type (5.9.0)** — `EVAL_ROOM_GATE_COPY` /
+  `gateCopyForSiteType(siteType)` (`src/tracker/gate-copy.ts`) pick "Evaluation
+  room access" copy for `sites.site_type === 'content'` (evaluation rooms /
+  content microsites) vs. "Demo access" for everything else; `<DemoGate
+  siteType="content" />` selects the base and any `copy` overrides still merge
+  on top. `gate-copy.ts` is published as its own React-free, dependency-free
+  `@cboyke/demotools/tracker/gate-copy` subpath (distinct from the `./tracker`
+  barrel that re-exports `DemoGate`) specifically so the demo-tracker service's
+  Netlify edge-gate template and `t.js` in-page overlay — neither a React app —
+  can import the exact same copy instead of hand-mirroring three copies that
+  drift. Neither surface calls an evaluation room a "demo".
 - Two integration modes via `createTrackerProxyRoute({ mode })`: **gated**
   (b2c/b2b — app renders its own `/gate`, authenticates the tracker
   server-side from a `demo_gate` cookie, never exposes `dt_session` to the
