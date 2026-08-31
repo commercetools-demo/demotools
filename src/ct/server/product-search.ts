@@ -1,15 +1,19 @@
-// ── commercetools Product Search "not enabled" detection ─────────────────────
+// ── commercetools Product Search availability detection ──────────────────────
 // Product Search is off by default on new CT projects (and auto-deactivates
 // after ~30 days idle). When disabled, CT returns HTTP 400 whose message
-// contains "Product Search API is not enabled". Detect it, cache it (throttled
-// probe), and let the layout render <ProductSearchDisabledBanner> instead of the
-// app crashing on an empty catalog.
+// contains "Product Search API is not enabled". While a freshly activated index
+// is still building, it instead returns 404 with a message claiming the project
+// does not exist. Detect both, cache the result (throttled probe), and let the
+// layout render <ProductSearchDisabledBanner> instead of the app crashing on an
+// empty catalog.
 // https://docs.commercetools.com/api/projects/product-search#activate-the-product-search-api
 
 /**
- * True if `err` is the commercetools "Product Search API is not enabled" error.
- * Pure — anchors on the message text (the `ObjectNotFound` code is overloaded
- * for many resource-not-found cases).
+ * True if `err` is a commercetools error meaning Product Search is unavailable —
+ * either not activated on the project, or activated but still building its index.
+ * Pure. Anchors on the message text where it can (the `ObjectNotFound` code is
+ * overloaded for many resource-not-found cases) and on the status code where the
+ * message itself is wrong. Only ever applied to a products/search failure.
  */
 export function isProductSearchDisabledError(err: unknown): boolean {
   const e = err as {
@@ -19,10 +23,27 @@ export function isProductSearchDisabledError(err: unknown): boolean {
   };
   const msg = e?.body?.message ?? e?.message ?? '';
   const code = e?.body?.errors?.[0]?.code;
-  return (
+
+  if (
     msg.includes('Product Search API is not enabled') ||
     (code === 'ObjectNotFound' && msg.includes('Product Search'))
-  );
+  ) {
+    return true;
+  }
+
+  // A project whose search indexing has just been activated answers
+  // products/search with 404 ResourceNotFound and the message
+  //   Project "<key>" does not exist
+  // for as long as the index is still being built. That message is wrong — the
+  // project plainly exists, since every other call in the same request
+  // succeeded — and taking it at face value crashes the PLP instead of
+  // degrading. This matcher is only ever applied to a products/search failure,
+  // so a 404 here means search is unavailable, whatever the body claims.
+  if (e?.statusCode === 404 && /Project ".*" does not exist/.test(msg)) {
+    return true;
+  }
+
+  return false;
 }
 
 export interface ProductSearchStatus {
