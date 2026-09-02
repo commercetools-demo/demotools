@@ -3,10 +3,10 @@
 Comprehensive inventory of implemented features in this demo. Source of truth
 for what exists in the codebase — keep it updated when features change.
 
-_Last generated: 2026-08-31 by feature-doc._
+_Last generated: 2026-09-02 by feature-doc._
 
 `@cboyke/demotools` is not a demo app itself — it is a published npm library
-(`@cboyke/demotools`, currently `5.9.0`) of reusable React components and
+(`@cboyke/demotools`, currently `5.9.1`) of reusable React components and
 server-side helpers, shared across the commercetools pre-sales demo repos
 (b2b-starter, b2c-starter, bridge-provider/patient, etc.) via subpath exports.
 No build/dev/test commands were run to produce this document.
@@ -227,9 +227,19 @@ modes, shared so each fix lands once.
   project, rendered as a banner in the app's root layout.
 - `createProductSearchStatus()` (`src/ct/server/product-search.ts`) +
   `<ProductSearchDisabledBanner>` (`src/ct/ProductSearchDisabledBanner.tsx`)
-  — detects a project with the Product Search API disabled (via a
-  caller-supplied probe closure bound to the app's own client) and surfaces
-  a banner instead of a hard failure.
+  — throttled probe (default 30s TTL) and error-classifier for a project
+  where Product Search can't be used yet, via a caller-supplied probe
+  closure bound to the app's own client; surfaces a banner instead of a hard
+  failure. `isProductSearchDisabledError()` (5.9.1) recognizes two distinct
+  commercetools failure shapes as the same "not ready" condition: the API
+  never activated (400, "Product Search API is not enabled") and a project
+  whose index is still building after a fresh activation, which instead
+  answers 404 `ResourceNotFound` with the misleading message `Project "<key>"
+  does not exist` even though the project exists and every other call in the
+  request succeeds — anchored on message text for the first shape and on
+  status code + message pattern for the second, so it doesn't swallow an
+  unrelated 404 (e.g. a genuinely missing product) that happens to share the
+  `ResourceNotFound` code.
 - `isCommercetoolsHostedImage` / `appendRenditionSuffix`
   (`src/ct/image-config.ts`) — helpers for commercetools-hosted product image
   URLs and requesting a specific rendition size.
@@ -244,12 +254,16 @@ modes, shared so each fix lands once.
   contract.
 - `test/runtime/*.test.mjs` (run via `node --test`) — runtime regression
   tests: `builtin-tools.test.mjs`, `gate-copy.test.mjs`,
-  `gate-grant.test.mjs`, `gate-preview.test.mjs`, `relevance.test.mjs`,
+  `gate-grant.test.mjs`, `gate-preview.test.mjs`,
+  `product-search-status.test.mjs`, `relevance.test.mjs`,
   `store-scoping.test.mjs`, `tool-source.test.mjs`, `track.test.mjs`,
   `tracker-scripts.test.mjs` — each pinning one of the hard-won bug fixes
   documented above (e.g. 4 of `track.test.mjs`'s 7 cases fail against the
   pre-5.7.2 shim; `tracker-scripts.test.mjs` pins the `defer`-not-`async`
-  script tag).
+  script tag; `product-search-status.test.mjs` pins the 404
+  index-still-building shape observed on a freshly seeded project on
+  2026-08-31, transcribed from the real commercetools response, alongside a
+  case proving an unrelated `ResourceNotFound` 404 is not swallowed).
 - `npm run verify` (`typecheck && build && test:runtime`) runs as
   `prepublishOnly`, so a broken build/type-check/runtime test blocks
   `npm publish`.
