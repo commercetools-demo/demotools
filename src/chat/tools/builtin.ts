@@ -37,11 +37,18 @@ import {
   type CtApiRoot,
 } from './client.js';
 import {
-  buildProductSearchBody,
+  buildProductSearchGraphQL,
   buildProjectionParameters,
   normalizeLimit,
   normalizeSearchTerm,
 } from './relevance.js';
+import {
+  graphQLErrorMessage,
+  graphQLErrorsOf,
+  isSearchDisabledGraphQLError,
+  shimSearchResult,
+  type GraphQLProductsSearchResponse,
+} from './product-search-gql.js';
 import {
   cartPayload,
   categoryPayload,
@@ -326,33 +333,54 @@ async function run<Extra>(
       const term = normalizeSearchTerm(args.query ?? args);
       if (!term) return fail<Extra>('No search term supplied.');
 
-      const body = buildProductSearchBody(term, {
+      const request = buildProductSearchGraphQL(term, {
         locale,
         currency,
         country,
         limit: normalizeLimit(args.limit),
-        // Store scoping. On a plain B2C catalog these are all null and the body
-        // is unchanged; on a dealer storefront they are what keeps the
+        // Store scoping. On a plain B2C catalog these are all null and the
+        // request is unchanged; on a dealer storefront they are what keeps the
         // assistant inside that dealer's catalogue and pricing.
         storeKey: session.storeKey,
         distributionChannelId: session.distributionChannelId,
         productSelectionId: session.productSelectionId,
       });
 
-      const { body: res } = await apiRoot
-        .products()
-        .search()
-        .post({ body: body as never })
+      // The ids come off the search index and the product data off the
+      // `product` sub-field, in one round trip. `productProjectionParameters`,
+      // which used to carry the data, is deprecated.
+      const { body: gql } = await apiRoot
+        .graphql()
+        .post({ body: request as never })
         .execute();
 
-      const products = (res.results ?? [])
-        .map((r) => (r.productProjection ? toProductSummary(r.productProjection, locale) : undefined))
+      // A query the index refuses comes back as HTTP 200 with an `errors`
+      // array rather than throwing, so it has to be read rather than caught.
+      const errors = graphQLErrorsOf(gql);
+      if (errors.length) {
+        // Product Search never activated on the project, or auto-deactivated
+        // after 30 days idle. There is nothing the shopper can do, so say so
+        // plainly instead of surfacing a stack trace into the conversation.
+        if (isSearchDisabledGraphQLError(errors)) {
+          return fail<Extra>('Product search is unavailable on this project.');
+        }
+        return fail<Extra>(`Product search failed: ${graphQLErrorMessage(errors)}`);
+      }
+
+      const res = (gql as { data?: { productsSearch?: GraphQLProductsSearchResponse } }).data
+        ?.productsSearch;
+
+      const products = (res?.results ?? [])
+        .map((entry) => {
+          const projection = shimSearchResult(entry);
+          return projection ? toProductSummary(projection, locale) : undefined;
+        })
         .filter((p): p is NonNullable<typeof p> => p !== undefined);
 
       return ok<Extra>(
         {
           matchCount: products.length,
-          totalMatches: res.total ?? products.length,
+          totalMatches: res?.total ?? products.length,
           products: products.map((p) => productPayload(p, fmt)),
           note:
             products.length === 0

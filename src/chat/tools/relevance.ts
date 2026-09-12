@@ -15,7 +15,17 @@
  * the hand-written search used. It is exported on its own — not just wired into
  * the built-in tools — because the MCP path needs exactly the same expression
  * to be competitive, and it should not be reinvented per demo.
+ *
+ * The product DATA behind a search comes from GraphQL — see
+ * ./product-search-gql.ts, which this module composes variables for. Only the
+ * query expression lives here.
  */
+
+import {
+  PRODUCT_SEARCH_DOCUMENT,
+  buildSearchVariables,
+  type ProductSearchGraphQLVariables,
+} from './product-search-gql.js';
 
 /**
  * A commercetools Product Search query expression.
@@ -137,7 +147,16 @@ export interface ProductSearchBodyOptions extends RelevanceQueryOptions, StoreSc
   sort?: Array<Record<string, unknown>>;
 }
 
-/** `productProjectionParameters` with store projection + price channel applied. */
+/**
+ * Price selection and store projection as `GET /product-projections` query
+ * arguments — currency, country, channel, store, plus the discount expand.
+ *
+ * This is what `get_product_details` reads a single product with, and those are
+ * supported query parameters on that endpoint. It is NOT the
+ * `productProjectionParameters` block on `POST /products/search`, which is
+ * deprecated: the search path composes GraphQL variables instead, via
+ * `buildProductSearchGraphQL`.
+ */
 export function buildProjectionParameters(
   currency: string,
   country: string,
@@ -180,6 +199,13 @@ export function applyStoreScope(
  * `markMatchingVariants` is on so the mapper can prefer the variant that
  * actually matched over the master variant — searching a SKU should show that
  * SKU's image and price, not the master's.
+ *
+ * @deprecated The `productProjectionParameters` block this emits is deprecated
+ * (announced 11 December 2025) and will be removed from the API, at which point
+ * the body it returns stops carrying any product data. Use
+ * `buildProductSearchGraphQL`, which is what the built-in `search_products`
+ * tool runs. Kept for callers still on the REST body; slated for removal in the
+ * next major.
  */
 export function buildProductSearchBody(
   term: string,
@@ -205,6 +231,52 @@ export function buildProductSearchBody(
     productProjectionParameters: buildProjectionParameters(currency, country, scope),
     sort: sort ?? [{ field: 'score', order: 'desc' }],
     query: applyStoreScope(buildRelevanceQuery(term, queryOpts), scope),
+  };
+}
+
+/**
+ * The GraphQL request for a shopper query — document plus variables, ready to
+ * POST to `/graphql`.
+ *
+ * Same boosted expression and same store scoping as the REST body; the
+ * difference is where the PRODUCT DATA comes from. `productProjectionParameters`
+ * is deprecated, so the product is read off the `product` sub-field of
+ * `productsSearch` instead, in the same round trip as the ids. See
+ * ./product-search-gql.ts.
+ *
+ * The expression travels as a variable rather than inlined, which is what lets
+ * `mustMatch: 'any'` and `order: 'desc'` transfer unchanged — GraphQL coerces a
+ * JSON string into an enum for a variable, but demands a bare identifier when
+ * it is written into the document.
+ */
+export function buildProductSearchGraphQL(
+  term: string,
+  opts: ProductSearchBodyOptions,
+): { query: string; variables: ProductSearchGraphQLVariables } {
+  const {
+    currency,
+    country,
+    limit = 6,
+    offset = 0,
+    sort,
+    storeKey,
+    distributionChannelId,
+    productSelectionId,
+    ...queryOpts
+  } = opts;
+  const scope: StoreScope = { storeKey, distributionChannelId, productSelectionId };
+
+  return {
+    query: PRODUCT_SEARCH_DOCUMENT,
+    variables: buildSearchVariables({
+      query: applyStoreScope(buildRelevanceQuery(term, queryOpts), scope),
+      ...(sort ? { sort } : {}),
+      limit,
+      offset,
+      currency,
+      country,
+      scope,
+    }),
   };
 }
 
