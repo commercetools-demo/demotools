@@ -99,15 +99,21 @@ test('buildProductSearchBody threads the scope end to end', () => {
 
 // --- handler-level, through a recording stub -------------------------------
 
-function stub(results = []) {
+function stub(results = [], gqlResults = []) {
   const calls = [];
-  const exec = () => ({ execute: async () => ({ body: { results, total: results.length } }) });
-  const rec = (op, payload) => {
+  const exec = (kind) => ({
+    execute: async () =>
+      kind === 'graphql'
+        ? { body: { data: { productsSearch: { total: gqlResults.length, results: gqlResults } } } }
+        : { body: { results, total: results.length } },
+  });
+  const rec = (op, payload, kind) => {
     calls.push({ op, ...payload });
-    return exec();
+    return exec(kind);
   };
   const b = {
     products: () => ({ search: () => ({ post: ({ body }) => rec('search', { body }) }) }),
+    graphql: () => ({ post: ({ body }) => rec('graphql', { body }, 'graphql') }),
     productProjections: () => ({
       withId: () => ({ get: (a) => rec('byId', a) }),
       get: (a) => rec('list', a),
@@ -130,10 +136,13 @@ test('search_products on a dealer session scopes to the selection', async () => 
 
   await toolRegistry.search_products({ query: 'bagger' }, dealerCtx);
 
-  const body = calls.find((c) => c.op === 'search').body;
-  assert.equal(body.productProjectionParameters.storeProjection, 'dealer-berlin');
+  const { variables } = calls.find((c) => c.op === 'graphql').body;
+  // Store projection and dealer pricing ride on the GraphQL variables now; the
+  // `productProjectionParameters` block that used to carry them is deprecated.
+  assert.equal(variables.storeProjection, 'dealer-berlin');
+  assert.equal(variables.channelId, 'dc-1', 'dealer pricing, not the master catalogue price');
   assert.equal(
-    body.query.and.filter((c) => c.exact?.value === 'ps-1').length,
+    variables.query.and.filter((c) => c.exact?.value === 'ps-1').length,
     2,
     'the dealer cannot be shown products outside their selection',
   );

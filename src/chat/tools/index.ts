@@ -44,6 +44,7 @@ export {
 export {
   applyStoreScope,
   buildProductSearchBody,
+  buildProductSearchGraphQL,
   buildProjectionParameters,
   buildRelevanceQuery,
   normalizeLimit,
@@ -53,6 +54,20 @@ export {
   type RelevanceQueryOptions,
   type StoreScope,
 } from './relevance.js';
+
+export {
+  PRODUCT_SEARCH_DOCUMENT,
+  buildSearchVariables,
+  graphQLErrorMessage,
+  graphQLErrorsOf,
+  isSearchDisabledGraphQLError,
+  localizedFromAllLocales,
+  shimSearchResult,
+  type GraphQLErrorEntry,
+  type GraphQLProductsSearchResponse,
+  type GraphQLSearchResultEntry,
+  type ProductSearchGraphQLVariables,
+} from './product-search-gql.js';
 
 export {
   cartPayload,

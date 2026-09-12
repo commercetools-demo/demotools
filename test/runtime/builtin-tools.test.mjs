@@ -20,13 +20,23 @@ import assert from 'node:assert/strict';
 import { createBuiltinToolSource } from '../../dist/chat/tools/builtin.js';
 
 /** Chainable apiRoot stub that records requests and returns canned bodies. */
-function stubApiRoot({ results = [], total = 0, cart, fail } = {}) {
+function stubApiRoot({ results = [], total = 0, cart, fail, gqlResults = [], gqlErrors } = {}) {
   const calls = [];
   const exec = (kind) => ({
     execute: async () => {
       if (fail) throw new Error(fail);
       if (kind === 'cart') return { body: cart ?? { id: 'c1', lineItems: [], totalPrice: null } };
       if (kind === 'productById') return { body: results[0] ?? {} };
+      // The catalog read runs over GraphQL, which reports a refused query as
+      // HTTP 200 with an `errors` array rather than by throwing.
+      if (kind === 'graphql') {
+        return {
+          body: {
+            ...(gqlErrors ? { errors: gqlErrors } : {}),
+            data: { productsSearch: { total: total || gqlResults.length, results: gqlResults } },
+          },
+        };
+      }
       return { body: { results, total } };
     },
   });
@@ -37,6 +47,7 @@ function stubApiRoot({ results = [], total = 0, cart, fail } = {}) {
 
   const builders = {
     products: () => ({ search: () => ({ post: ({ body }) => record('productSearch', { body }, 'search') }) }),
+    graphql: () => ({ post: ({ body }) => record('graphql', { body }, 'graphql') }),
     productProjections: () => ({
       withId: ({ ID }) => ({ get: (a = {}) => record('productById', { ID, ...a }, 'productById') }),
       get: (a = {}) => record('productProjections', a, 'list'),
@@ -104,14 +115,28 @@ test('include / exclude / rename shape the exposed surface', () => {
 });
 
 test('search_products recovers from the hoisted-query shape and boosts relevance', async () => {
+  const variant = {
+    id: 1,
+    sku: 'RUG-1',
+    images: [{ url: 'https://x/i.jpg' }],
+    price: { value: { centAmount: 129900, currencyCode: 'USD', fractionDigits: 2 } },
+    prices: [],
+  };
   const { root, calls } = stubApiRoot({
-    results: [
+    gqlResults: [
       {
-        productProjection: {
+        id: 'p1',
+        product: {
           id: 'p1',
-          name: { 'en-US': 'Kalso Wool Rug' },
-          slug: { 'en-US': 'kalso-wool-rug' },
-          masterVariant: { id: 1, sku: 'RUG-1', images: [{ url: 'https://x/i.jpg' }], price: { value: { centAmount: 129900, currencyCode: 'USD', fractionDigits: 2 } } },
+          masterData: {
+            current: {
+              nameAllLocales: [{ locale: 'en-US', value: 'Kalso Wool Rug' }],
+              slugAllLocales: [{ locale: 'en-US', value: 'kalso-wool-rug' }],
+              masterVariant: variant,
+              allVariants: [variant],
+              matched: [],
+            },
+          },
         },
       },
     ],
@@ -128,9 +153,13 @@ test('search_products recovers from the hoisted-query shape and boosts relevance
   assert.equal(res.toolPayload.products[0].priceDisplay, '$1,299.00', 'formatted for the model to quote');
   assert.equal(res.toolPayload.products[0].priceMinorUnits, 129900);
 
-  const body = calls.find((c) => c.op === 'productSearch').body;
-  assert.equal(body.limit, 3, 'limit survived the odd argument shape');
-  assert.equal(body.query.or[0].fullText.boost, 3, 'boosted expression, not a bare fullText');
+  const { variables } = calls.find((c) => c.op === 'graphql').body;
+  assert.equal(variables.limit, 3, 'limit survived the odd argument shape');
+  assert.equal(variables.query.or[0].fullText.boost, 3, 'boosted expression, not a bare fullText');
+  // Price selection rides on the variables now, not on the deprecated
+  // productProjectionParameters block.
+  assert.equal(variables.currency, 'USD');
+  assert.equal(variables.country, 'US');
 });
 
 // --- Property 1: session injection -----------------------------------------

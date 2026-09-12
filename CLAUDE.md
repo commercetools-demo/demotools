@@ -133,8 +133,71 @@ Rules when integrating:
 - **Use `buildRelevanceQuery` for any catalog search**, including on the MCP
   path. A bare `fullText` returns 0 hits for "wool rug" against a catalog of
   "Kalso Wool Rug", and without boosts a description match outranks a name match.
+- **Read product data over GraphQL, never `productProjectionParameters`.** See
+  the section below — `buildProductSearchGraphQL` is the entry point.
 - **Handlers must never throw.** `runChatTurn` calls them without a try/catch.
   The pack returns `{ isError: true }`; do the same in app tools.
+
+### Catalog reads run on GraphQL `productsSearch` — 5.10.0
+
+`productProjectionParameters` on `POST /products/search` is deprecated
+(announced 11 December 2025) and will be removed. `search_products` reads the
+product off the `product` sub-field of the GraphQL `productsSearch` query
+instead, which carries price selection and store projection in the same round
+trip as the ids.
+
+The split: [`relevance.ts`](src/chat/tools/relevance.ts) owns the query
+expression, [`product-search-gql.ts`](src/chat/tools/product-search-gql.ts) owns
+the document, the variables and the response shim.
+`buildProductSearchGraphQL(term, opts)` returns `{ query, variables }` ready to
+POST to `/graphql`; `shimSearchResult(entry)` turns one result back into the
+`ProductProjection` shape `toProductSummary` reads.
+
+```ts
+const request = buildProductSearchGraphQL(term, { locale, currency, country, limit, storeKey, distributionChannelId, productSelectionId });
+const { body } = await apiRoot.graphql().post({ body: request }).execute();
+const errors = graphQLErrorsOf(body);            // HTTP 200 + errors[], never a throw
+if (isSearchDisabledGraphQLError(errors)) { /* degrade */ }
+const products = (body.data?.productsSearch?.results ?? [])
+  .map(shimSearchResult).filter(Boolean)
+  .map((p) => toProductSummary(p, locale));
+```
+
+Four things here are load-bearing and none of them type-check:
+
+1. **The expression travels as a GraphQL variable, never inlined.** For a
+   variable GraphQL coerces a JSON string into an enum by name, so
+   `mustMatch: 'any'` and `order: 'desc'` transfer unchanged. Written into the
+   document, every enum needs a bare identifier and `order: "desc"` is a hard
+   error.
+2. **No `localesProjection`.** `localized()` falls back exact locale → same
+   language → any `en` → *first value*, because demo catalogs are routinely
+   seeded in one language while the storefront runs another. Trimming the
+   returned locales strips the value that last fallback exists to find, and
+   every product renders a blank name with no error.
+3. **`isMatchingVariant` is written onto the variants**, from
+   `allVariants(onlyMatching: true)` — the GraphQL `ProductSearchResult` has no
+   `matchingVariants` and the migration guide offers no replacement. An empty or
+   complete matched list marks **nothing**: `representativeVariant` searches
+   `product.variants`, which EXCLUDES the master, before falling back to the
+   master, so marking everything on a browse would show each product's *second*
+   variant. `allVariants`, not `variants`, because a SKU search can match the
+   master.
+4. **`fractionDigits` and `availableQuantity` are selected**, because `toMoney`
+   carries the first into the display contract and `inStock` falls back to the
+   second. A dropped `fractionDigits` formats minor units as if every currency
+   had two decimal places.
+
+`buildProjectionParameters` stays — it builds `GET /product-projections` query
+arguments for `get_product_details`, which are supported parameters on that
+endpoint and not the deprecated block. `buildProductSearchBody` is
+`@deprecated`: it still returns a valid REST body today, but that body stops
+carrying product data when the parameter is removed. It is slated for deletion
+in the next major; nothing in this package calls it.
+
+Covered by [`test/runtime/product-search-gql.test.mjs`](test/runtime/product-search-gql.test.mjs),
+which pins the absence of `localesProjection`, the browse-falls-back-to-master
+rule, and the fields the summary reads.
 
 ## commercetools resilience (`/ct`)
 
