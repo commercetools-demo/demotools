@@ -19,7 +19,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  buildProductSearchBody,
+  buildProductSearchGraphQL,
   buildRelevanceQuery,
   normalizeLimit,
   normalizeSearchTerm,
@@ -105,22 +105,28 @@ test('normalizeLimit clamps model-supplied counts', () => {
   assert.equal(normalizeLimit(undefined, 20, 50), 20, 'custom default');
 });
 
-test('buildProductSearchBody sets price selection and relevance sort', () => {
-  const body = buildProductSearchBody('wool rug', {
+test('buildProductSearchGraphQL sets price selection and relevance sort', () => {
+  const { query, variables } = buildProductSearchGraphQL('wool rug', {
     locale: 'en-US',
     currency: 'USD',
     country: 'US',
   });
 
-  assert.equal(body.limit, 6);
-  assert.equal(body.offset, 0);
-  assert.equal(
-    body.markMatchingVariants,
-    true,
+  assert.equal(variables.limit, 6);
+  assert.equal(variables.offset, 0);
+  assert.ok(
+    query.includes('markMatchingVariants: true'),
     'a SKU search must show the variant that matched, not the master',
   );
-  assert.deepEqual(body.sort, [{ field: 'score', order: 'desc' }]);
-  assert.equal(body.productProjectionParameters.priceCurrency, 'USD');
-  assert.equal(body.productProjectionParameters.priceCountry, 'US');
-  assert.ok(body.query.or, 'carries the boosted expression');
+  assert.deepEqual(variables.sort, [{ field: 'score', order: 'desc' }]);
+  // Price selection rides on the variables and is read by `price(currency:,
+  // country:)` in the document — not on the deprecated projection block, which
+  // this package no longer emits anywhere.
+  assert.equal(variables.currency, 'USD');
+  assert.equal(variables.country, 'US');
+  assert.ok(
+    query.includes('price(currency: $currency, country: $country'),
+    'and the document actually consumes them',
+  );
+  assert.ok(variables.query.or, 'carries the boosted expression');
 });

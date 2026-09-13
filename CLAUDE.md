@@ -188,12 +188,16 @@ Four things here are load-bearing and none of them type-check:
    second. A dropped `fractionDigits` formats minor units as if every currency
    had two decimal places.
 
-`buildProjectionParameters` stays — it builds `GET /product-projections` query
-arguments for `get_product_details`, which are supported parameters on that
-endpoint and not the deprecated block. `buildProductSearchBody` is
-`@deprecated`: it still returns a valid REST body today, but that body stops
-carrying product data when the parameter is removed. It is slated for deletion
-in the next major; nothing in this package calls it.
+**Nothing in this package emits `productProjectionParameters` any more.**
+`buildProductSearchBody`, which was the last thing that did, is gone —
+`buildProductSearchGraphQL` replaces it. Do not reintroduce a REST search body
+that carries an inline projection: the parameter is deprecated, and a body built
+around it returns no product data at all once the API drops it.
+
+`buildProjectionParameters` stays, and is not the same thing. It builds
+`GET /product-projections` query arguments for `get_product_details` —
+`priceCurrency`, `priceCountry`, `priceChannel`, `storeProjection` and the
+discount `expand` — which are supported parameters on that endpoint.
 
 Covered by [`test/runtime/product-search-gql.test.mjs`](test/runtime/product-search-gql.test.mjs),
 which pins the absence of `localesProjection`, the browse-falls-back-to-master

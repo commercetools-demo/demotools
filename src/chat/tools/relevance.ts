@@ -138,6 +138,14 @@ export interface StoreScope {
   productSelectionId?: string | null;
 }
 
+/**
+ * Options for one catalog search: the relevance knobs plus the store scope.
+ *
+ * Named for a REST request body that no longer exists — `buildProductSearchGraphQL`
+ * is the only consumer, and it composes GraphQL variables. The name is kept
+ * because renaming an exported type breaks consumers for no behavioural gain;
+ * read "Body" as "request".
+ */
 export interface ProductSearchBodyOptions extends RelevanceQueryOptions, StoreScope {
   currency: string;
   country: string;
@@ -190,47 +198,6 @@ export function applyStoreScope(
       { exact: { field: 'productSelections', value: scope.productSelectionId } },
       { exact: { field: 'variants.productSelections', value: scope.productSelectionId } },
     ],
-  };
-}
-
-/**
- * Full Product Search request body for a shopper query.
- *
- * `markMatchingVariants` is on so the mapper can prefer the variant that
- * actually matched over the master variant — searching a SKU should show that
- * SKU's image and price, not the master's.
- *
- * @deprecated The `productProjectionParameters` block this emits is deprecated
- * (announced 11 December 2025) and will be removed from the API, at which point
- * the body it returns stops carrying any product data. Use
- * `buildProductSearchGraphQL`, which is what the built-in `search_products`
- * tool runs. Kept for callers still on the REST body; slated for removal in the
- * next major.
- */
-export function buildProductSearchBody(
-  term: string,
-  opts: ProductSearchBodyOptions,
-): Record<string, unknown> {
-  const {
-    currency,
-    country,
-    limit = 6,
-    offset = 0,
-    sort,
-    storeKey,
-    distributionChannelId,
-    productSelectionId,
-    ...queryOpts
-  } = opts;
-  const scope: StoreScope = { storeKey, distributionChannelId, productSelectionId };
-
-  return {
-    limit,
-    offset,
-    markMatchingVariants: true,
-    productProjectionParameters: buildProjectionParameters(currency, country, scope),
-    sort: sort ?? [{ field: 'score', order: 'desc' }],
-    query: applyStoreScope(buildRelevanceQuery(term, queryOpts), scope),
   };
 }
 

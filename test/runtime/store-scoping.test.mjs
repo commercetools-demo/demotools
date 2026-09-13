@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 
 import {
   applyStoreScope,
-  buildProductSearchBody,
+  buildProductSearchGraphQL,
   buildProjectionParameters,
   buildRelevanceQuery,
 } from '../../dist/chat/tools/relevance.js';
@@ -76,24 +76,28 @@ test('the product selection is filtered explicitly, on both product and variant'
   assert.equal(relevance.or[0].fullText.boost, 3, 'and still boosted');
 });
 
-test('buildProductSearchBody threads the scope end to end', () => {
-  const body = buildProductSearchBody('rug', {
+test('buildProductSearchGraphQL threads the scope end to end', () => {
+  const { variables } = buildProductSearchGraphQL('rug', {
     locale: 'en-US',
     currency: 'EUR',
     country: 'DE',
     ...DEALER,
   });
 
-  assert.equal(body.productProjectionParameters.storeProjection, 'dealer-berlin');
-  assert.equal(body.productProjectionParameters.priceChannel, 'dc-1');
-  assert.ok(body.query.and, 'query is scoped');
+  // Store projection and dealer pricing are GraphQL variables now — read by
+  // `product(storeProjection:)` and `price(channelId:)`.
+  assert.equal(variables.storeProjection, 'dealer-berlin');
+  assert.equal(variables.channelId, 'dc-1');
+  assert.ok(variables.query.and, 'query is scoped');
   assert.equal(
-    body.query.and.filter((c) => c.exact?.field?.includes('productSelections')).length,
+    variables.query.and.filter((c) => c.exact?.field?.includes('productSelections')).length,
     2,
   );
-  // Scope keys must not leak into the body as top-level junk.
+  // Scope keys must not leak into the variables as top-level junk — every one
+  // of them has a differently-named GraphQL variable, and an unrecognised
+  // variable is not an error, it is simply ignored.
   for (const k of ['storeKey', 'distributionChannelId', 'productSelectionId']) {
-    assert.ok(!(k in body), `${k} must not appear at the top level`);
+    assert.ok(!(k in variables), `${k} must not appear at the top level`);
   }
 });
 
