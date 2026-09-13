@@ -43,7 +43,6 @@ export {
 
 export {
   applyStoreScope,
-  buildProductSearchBody,
   buildProductSearchGraphQL,
   buildProjectionParameters,
   buildRelevanceQuery,
