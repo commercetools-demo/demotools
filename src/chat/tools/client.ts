@@ -10,7 +10,7 @@
  * One deliberate difference from the storefront version. The storefront
  * validates env and builds its client **at module load**, which is right for an
  * app: a misconfigured deploy should fail loudly on boot. This is a *library*,
- * and `import '@cboyke/demotools/chat/tools'` must not throw just because it was
+ * and `import '@ct-demos/demotools/chat/tools'` must not throw just because it was
  * imported — a demo running MCP-only, or a build step that touches the module
  * without ever calling a tool, has no credentials and no need for them. So the
  * client is built **lazily on first use** and cached. A missing variable throws

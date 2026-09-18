@@ -1,7 +1,7 @@
 /**
  * Shown when the connected CT project hasn't activated the Product Search API.
  * Render above the main content in the root layout — see the product-search
- * status helpers in `@cboyke/demotools/ct/server`.
+ * status helpers in `@ct-demos/demotools/ct/server`.
  *
  * Standard Tailwind classes only (see the package CLAUDE.md "Tailwind" note).
  */

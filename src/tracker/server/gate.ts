@@ -8,8 +8,8 @@
 //   // site/lib/gate.ts
 //   import { cookies } from 'next/headers';
 //   import { routing } from '@/i18n/routing';
-//   import { GATE_COOKIE, isGateEnabled, isGateOpen } from '@cboyke/demotools/tracker/server';
-//   export { gateSlug, trackerOrigin, isGateEnabled, siteIsOpen, GATE_COOKIE } from '@cboyke/demotools/tracker/server';
+//   import { GATE_COOKIE, isGateEnabled, isGateOpen } from '@ct-demos/demotools/tracker/server';
+//   export { gateSlug, trackerOrigin, isGateEnabled, siteIsOpen, GATE_COOKIE } from '@ct-demos/demotools/tracker/server';
 //   export const GATE_HOME_PATH = `/${routing.defaultLocale}`;
 //   export async function isDemoGateOpen(): Promise<boolean> {
 //     if (!isGateEnabled()) return true;

@@ -1,4 +1,4 @@
-// @cboyke/demotools/tracker/server — server-only route factories + gate helpers
+// @ct-demos/demotools/tracker/server — server-only route factories + gate helpers
 // for the demo-tracker integration. Keep this OUT of 'use client' files.
 
 export {

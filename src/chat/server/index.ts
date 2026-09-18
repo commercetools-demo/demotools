@@ -20,7 +20,7 @@ export {
 } from './mcp-tools.js';
 
 // The builtin-vs-MCP feature flag. The built-in pack itself lives at
-// `@cboyke/demotools/chat/tools` — it is a separate subpath so a demo running
+// `@ct-demos/demotools/chat/tools` — it is a separate subpath so a demo running
 // MCP-only never pulls the pack's mappers into its bundle.
 export {
   CHAT_TOOL_SOURCE_ENV,

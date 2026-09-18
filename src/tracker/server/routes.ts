@@ -6,14 +6,14 @@
 // one-liner:
 //
 //   // site/app/api/tracker/[...path]/route.ts
-//   import { createTrackerProxyRoute } from '@cboyke/demotools/tracker/server';
+//   import { createTrackerProxyRoute } from '@ct-demos/demotools/tracker/server';
 //   const handler = createTrackerProxyRoute({ mode: 'gated' });
 //   export const GET = handler, POST = handler, PUT = handler,
 //     PATCH = handler, DELETE = handler, OPTIONS = handler;
 //   export const dynamic = 'force-dynamic';
 //
 //   // site/app/api/gate/route.ts
-//   import { createGateRoute } from '@cboyke/demotools/tracker/server';
+//   import { createGateRoute } from '@ct-demos/demotools/tracker/server';
 //   import { GATE_HOME_PATH } from '@/lib/gate';
 //   export const { GET, POST } = createGateRoute({ homePath: GATE_HOME_PATH });
 //   export const dynamic = 'force-dynamic';

@@ -1,8 +1,18 @@
-# Instructions for Claude when integrating @cboyke/demotools
+# Instructions for Claude when integrating @ct-demos/demotools
 
 This file is shipped inside the published npm package so it lands in
-`node_modules/@cboyke/demotools/CLAUDE.md`. If you're an AI assistant helping
-someone wire this library into a demo, read this first.
+`node_modules/@ct-demos/demotools/CLAUDE.md`. If you're an AI assistant
+helping someone wire this library into a demo, read this first.
+
+The package is `@ct-demos/demotools`. `@cboyke/demotools` stays on npm at
+5.13.0 and keeps resolving, so a demo that has not moved yet builds untouched;
+nothing new publishes there.
+
+Moving a demo across is two edits in the same commit — the dependency **and**
+the Tailwind content path in the next section, because the class-name literals
+live in the package directory. A scan still pointing at `@cboyke` matches
+nothing the moment the dependency changes, which is exactly the silent failure
+described below.
 
 ## The single most common breakage: missing Tailwind content path
 
@@ -25,7 +35,7 @@ Add the dist path to `tailwind.config.js`:
 content: [
   './index.html',
   './src/**/*.{js,jsx,ts,tsx}',
-  './node_modules/@cboyke/demotools/dist/**/*.js', // ← required
+  './node_modules/@ct-demos/demotools/dist/**/*.js', // ← required
 ],
 ```
 
@@ -34,7 +44,7 @@ content: [
 Add to the project's main CSS file (the one with `@import "tailwindcss"`):
 
 ```css
-@source "../node_modules/@cboyke/demotools/dist/**/*.js";
+@source "../node_modules/@ct-demos/demotools/dist/**/*.js";
 ```
 
 ### After changing the config
@@ -74,16 +84,16 @@ real consumers — don't repeat it.
 
 ## Module boundaries
 
-| Import path                        | Use in                | Notes                                        |
-|------------------------------------|-----------------------|----------------------------------------------|
-| `@cboyke/demotools`                | Client + server       | `JsonViewer`, `JsonModal`                    |
-| `@cboyke/demotools/chat`           | Client only           | Chat components, types, hooks                |
-| `@cboyke/demotools/chat/server`    | Server only           | Agent loop, route factories, MCP source, tool-source flag |
-| `@cboyke/demotools/chat/tools`     | Server only           | Built-in commerce tools; needs the CT SDK (optional peer dep) |
-| `@cboyke/demotools/tracker`        | Client + server       | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
-| `@cboyke/demotools/tracker/server` | Server only           | Gate helpers + `createTrackerProxyRoute` / `createGateRoute` |
-| `@cboyke/demotools/ct`             | Client + server       | `ProjectExpiredBanner`, `ProductSearchDisabledBanner` |
-| `@cboyke/demotools/ct/server`      | Server only           | `getSessionSecret`, project-trial-expired probe, Product-Search-disabled status |
+| Import path                          | Use in                | Notes                                        |
+|--------------------------------------|-----------------------|----------------------------------------------|
+| `@ct-demos/demotools`                | Client + server       | `JsonViewer`, `JsonModal`                    |
+| `@ct-demos/demotools/chat`           | Client only           | Chat components, types, hooks                |
+| `@ct-demos/demotools/chat/server`    | Server only           | Agent loop, route factories, MCP source, tool-source flag |
+| `@ct-demos/demotools/chat/tools`     | Server only           | Built-in commerce tools; needs the CT SDK (optional peer dep) |
+| `@ct-demos/demotools/tracker`        | Client + server       | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
+| `@ct-demos/demotools/tracker/server` | Server only           | Gate helpers + `createTrackerProxyRoute` / `createGateRoute` |
+| `@ct-demos/demotools/ct`             | Client + server       | `ProjectExpiredBanner`, `ProductSearchDisabledBanner` |
+| `@ct-demos/demotools/ct/server`      | Server only           | `getSessionSecret`, project-trial-expired probe, Product-Search-disabled status |
 
 Keep `chat/server`, `chat/tools`, `tracker/server`, and `ct/server` out of
 `'use client'` files — they bundle server-only code (LLM driver / CT SDK / route
@@ -99,8 +109,8 @@ on a remote dependency mid-demo.
 
 ```ts
 // site/app/api/chat/route.ts
-import { makeChatRoute } from '@cboyke/demotools/chat/server';
-import { createBuiltinToolSource } from '@cboyke/demotools/chat/tools';
+import { makeChatRoute } from '@ct-demos/demotools/chat/server';
+import { createBuiltinToolSource } from '@ct-demos/demotools/chat/tools';
 
 export const POST = makeChatRoute({
   builtinToolSource: createBuiltinToolSource(),  // reads CTP_* itself — no wiring
@@ -217,8 +227,8 @@ every demo. All read the standard `CTP_*` env vars; nothing is app-coupled.
   `<ProjectExpiredBanner>` (`/ct`) in the root layout when expired.
   ```tsx
   // app/layout.tsx
-  import { checkProjectActive, isProjectExpired } from '@cboyke/demotools/ct/server';
-  import { ProjectExpiredBanner } from '@cboyke/demotools/ct';
+  import { checkProjectActive, isProjectExpired } from '@ct-demos/demotools/ct/server';
+  import { ProjectExpiredBanner } from '@ct-demos/demotools/ct';
   await checkProjectActive();
   // …later: {isProjectExpired() && <ProjectExpiredBanner />}
   // and in CT catch sites: markProjectExpiredFromError(e)
@@ -227,7 +237,7 @@ every demo. All read the standard `CTP_*` env vars; nothing is app-coupled.
   app's own CT client, so bind it once with a probe closure and re-export:
   ```ts
   // lib/ct/search.ts
-  import { createProductSearchStatus } from '@cboyke/demotools/ct/server';
+  import { createProductSearchStatus } from '@ct-demos/demotools/ct/server';
   const s = createProductSearchStatus(() =>
     apiRoot.products().search().post({ body: { limit: 0 } }).execute().then(() => {}));
   export const { isProductSearchDisabledError, isProductSearchDisabled, checkProductSearchEnabled } = s;
@@ -359,7 +369,7 @@ visitors consistently read it as "username and password", tried a password of
 their own, and asked which account to use.
 
 The strings now live in [`src/tracker/gate-copy.ts`](src/tracker/gate-copy.ts)
-(`DEMO_GATE_COPY`, exported from `@cboyke/demotools/tracker`), and each field
+(`DEMO_GATE_COPY`, exported from `@ct-demos/demotools/tracker`), and each field
 says whose credential it is:
 
 - **"Your email address"** — *"Any work email. There's no account to create —
@@ -395,12 +405,12 @@ account-login misreading is just as likely on a room.
 
 | Surface | Lives in | Reaches demos when |
 |---|---|---|
-| `DemoGate` (app gate — most demos) | this package | the demo bumps `@cboyke/demotools` and redeploys |
+| `DemoGate` (app gate — most demos) | this package | the demo bumps `@ct-demos/demotools` and redeploys |
 | generated Netlify edge function | demo-tracker `src/edge-gate-template.ts` | the site's edge bundle is **regenerated and redeployed** |
 | `t.js` in-page overlay | demo-tracker `src/tracker-snippet.ts` | immediately — `t.js` is served live |
 
 The tracker imports the strings from the React-free
-**`@cboyke/demotools/tracker/gate-copy`** subpath export — *not* the `./tracker`
+**`@ct-demos/demotools/tracker/gate-copy`** subpath export — *not* the `./tracker`
 barrel, which re-exports `DemoGate` and would pull the react/react-dom peer deps
 into a Fastify service. Change the wording here, bump the tracker's dependency,
 and all three surfaces move together.
@@ -534,14 +544,14 @@ The cookie is named `demo_gate` (not `dt_session`), set `SameSite=Lax`, and
 
 ```ts
 // site/app/api/tracker/[...path]/route.ts
-import { createTrackerProxyRoute } from '@cboyke/demotools/tracker/server';
+import { createTrackerProxyRoute } from '@ct-demos/demotools/tracker/server';
 export const dynamic = 'force-dynamic';
 const handler = createTrackerProxyRoute({ mode: 'gated' }); // or 'track-only'
 export const GET = handler, POST = handler, PUT = handler,
   PATCH = handler, DELETE = handler, OPTIONS = handler;
 
 // site/app/api/gate/route.ts  (gated only)
-import { createGateRoute } from '@cboyke/demotools/tracker/server';
+import { createGateRoute } from '@ct-demos/demotools/tracker/server';
 import { GATE_HOME_PATH } from '@/lib/gate';
 export const dynamic = 'force-dynamic';
 export const { GET, POST } = createGateRoute({ homePath: GATE_HOME_PATH });
@@ -549,8 +559,8 @@ export const { GET, POST } = createGateRoute({ homePath: GATE_HOME_PATH });
 // site/lib/gate.ts  (gated only — the ONLY app-specific glue)
 import { cookies } from 'next/headers';
 import { routing } from '@/i18n/routing';
-import { GATE_COOKIE, isGateEnabled, isGateOpen } from '@cboyke/demotools/tracker/server';
-export { gateSlug, trackerOrigin, isGateEnabled, siteIsOpen, GATE_COOKIE } from '@cboyke/demotools/tracker/server';
+import { GATE_COOKIE, isGateEnabled, isGateOpen } from '@ct-demos/demotools/tracker/server';
+export { gateSlug, trackerOrigin, isGateEnabled, siteIsOpen, GATE_COOKIE } from '@ct-demos/demotools/tracker/server';
 export const GATE_HOME_PATH = `/${routing.defaultLocale}`;
 export async function isDemoGateOpen() {
   if (!isGateEnabled()) return true;
@@ -559,7 +569,7 @@ export async function isDemoGateOpen() {
 
 // …and WITH a page builder, swap isGateOpen for gateVerdict (see the carve-out above):
 import { headers } from 'next/headers';
-import { gateVerdict, gateRedirectPath, type GateVerdict } from '@cboyke/demotools/tracker/server';
+import { gateVerdict, gateRedirectPath, type GateVerdict } from '@ct-demos/demotools/tracker/server';
 import { getPageBuilderConfig, PB_PREVIEW_PARAM } from '@commercetools-demo/page-builder';
 export { gateRedirectPath };
 export async function demoGateVerdict(): Promise<GateVerdict> {
@@ -574,11 +584,11 @@ export async function demoGateVerdict(): Promise<GateVerdict> {
 //   if ((await demoGateVerdict()) === 'blocked') redirect(gateRedirectPath(await headers()));
 
 // site/app/gate/page.tsx  (gated only)
-import { DemoGate } from '@cboyke/demotools/tracker';
+import { DemoGate } from '@ct-demos/demotools/tracker';
 // … redirect if isDemoGateOpen(); else <DemoGate homePath={GATE_HOME_PATH} open={await siteIsOpen()} />
 
 // site/app/layout.tsx  (<head>)
-import { TrackerScripts } from '@cboyke/demotools/tracker';
+import { TrackerScripts } from '@ct-demos/demotools/tracker';
 // <TrackerScripts context={{ store, customer }} />   (gate defaults to false)
 ```
 

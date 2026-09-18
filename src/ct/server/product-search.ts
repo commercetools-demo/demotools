@@ -67,7 +67,7 @@ export interface ProductSearchStatus {
  * storefront's search module) and re-export its members.
  *
  *   // site/lib/ct/search.ts
- *   import { createProductSearchStatus } from '@cboyke/demotools/ct/server';
+ *   import { createProductSearchStatus } from '@ct-demos/demotools/ct/server';
  *   const status = createProductSearchStatus(() =>
  *     apiRoot.products().search().post({ body: { limit: 0 } }).execute().then(() => {}));
  *   export const { isProductSearchDisabledError, isProductSearchDisabled,

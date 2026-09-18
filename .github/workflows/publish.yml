@@ -29,7 +29,7 @@ jobs:
         id: check
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
-          if npm view "@cboyke/demotools@${PKG_VERSION}" version >/dev/null 2>&1; then
+          if npm view "@ct-demos/demotools@${PKG_VERSION}" version >/dev/null 2>&1; then
             echo "Version ${PKG_VERSION} already on npm — skipping publish."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else

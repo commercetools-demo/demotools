@@ -1,4 +1,4 @@
-// @cboyke/demotools/chat/tools — the built-in (non-MCP) commerce tool pack.
+// @ct-demos/demotools/chat/tools — the built-in (non-MCP) commerce tool pack.
 //
 // Server-only: builds a commercetools client from the app's CTP_* env vars.
 // Keep out of 'use client' files.
@@ -6,8 +6,8 @@
 // Zero-wiring usage — the tools read the same credentials as the storefront:
 //
 //   // site/app/api/chat/route.ts
-//   import { makeChatRoute } from '@cboyke/demotools/chat/server';
-//   import { createBuiltinToolSource } from '@cboyke/demotools/chat/tools';
+//   import { makeChatRoute } from '@ct-demos/demotools/chat/server';
+//   import { createBuiltinToolSource } from '@ct-demos/demotools/chat/tools';
 //
 //   export const POST = makeChatRoute({
 //     builtinToolSource: createBuiltinToolSource(),   // ← that's it
