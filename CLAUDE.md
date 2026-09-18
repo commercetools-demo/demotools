@@ -247,7 +247,7 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
-### The gate verifies the cookie — 6.0.0
+### The gate verifies the cookie — 5.12.0
 
 `isGateOpen()` asks the tracker whether the `demo_gate` cookie is a live session
 **for this slug**, and `gateVerdict()` is built on it. The cookie's value is the
@@ -274,11 +274,12 @@ Three properties hold it together, all pinned by
   outage mid-presentation is invisible, and refuses everyone else — who could
   not have authenticated anyway, since `/auth` is on the same tracker.
 
-**Both functions are now async.** Every consumer already calls them as
-`return isGateOpen(...)` inside an `async` wrapper, so the upgrade is a version
-bump with no code change — but a caller that treats the result as a bare boolean
-(`if (isGateOpen(x))`) would read a Promise as always-true and serve the site
-ungated. Check the call site when bumping.
+**Both functions are async.** Every consumer in the fleet calls them as
+`return isGateOpen(...)` inside an `async` wrapper, which is why this ships as a
+minor rather than a major — the starters pin `^5.x`, and a security fix that no
+demo resolves to is not a fix. A caller that instead treats the result as a bare
+boolean (`if (isGateOpen(x))`) would read a Promise as always-true and serve the
+site ungated, so check the call site when bumping.
 
 ### Analytics silently off without the gate noticing — fixed in 5.7.1
 
