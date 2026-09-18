@@ -140,6 +140,42 @@ export function createTrackerProxyRoute(
   };
 }
 
+/**
+ * Wrap a route handler so it answers 401 unless the caller has passed the gate.
+ *
+ * The gate lives in `app/[locale]/layout.tsx`, which route handlers never render
+ * through — `app/api/**` sits outside the locale tree, so a gated storefront
+ * still answers its own API to anyone who asks. That surface reaches the live
+ * commercetools project: catalog reads, cart and customer writes, and whatever
+ * an LLM-backed route costs per call.
+ *
+ * Enforced in the handler rather than in `middleware.ts`/`proxy.ts`, because
+ * `@netlify/plugin-nextjs` does not deploy Next middleware as a routed edge
+ * handler — it silently never runs, which reads as "protected" and is not. A
+ * wrapper runs in the same Node lambda the app gate already runs in.
+ *
+ *     export const GET = withGate(async (req: NextRequest) => { ... });
+ *
+ * Inert wherever the gate is: local dev, and forks with no slug configured.
+ * Leave the gate's own entry points unwrapped — the route that redeems a
+ * password or a grant, the tracker proxy, and any hand-off a visitor arrives
+ * through before they could hold a cookie.
+ */
+export function withGate<R extends Request, A extends unknown[]>(
+  handler: (req: R, ...rest: A) => Response | Promise<Response>,
+): (req: R, ...rest: A) => Promise<Response> {
+  return async function gated(req: R, ...rest: A): Promise<Response> {
+    const cookie = parseCookies(req.headers.get('cookie'))[GATE_COOKIE];
+    if (!(await isGateOpen(cookie))) {
+      return new Response(JSON.stringify({ error: 'Demo access required' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+      });
+    }
+    return handler(req, ...rest);
+  };
+}
+
 export interface GateRouteOptions {
   /** Where a granted visitor is sent (default-locale home, e.g. `/en-us`). */
   homePath: string;
