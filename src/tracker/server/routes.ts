@@ -18,7 +18,8 @@
 //   export const { GET, POST } = createGateRoute({ homePath: GATE_HOME_PATH });
 //   export const dynamic = 'force-dynamic';
 
-import { GATE_COOKIE, TRACKER_BASE_PATH, TRACKER_COOKIE, gateSlug, trackerOrigin } from '../config.js';
+import { GATE_COOKIE, JWT_RE, TRACKER_BASE_PATH, TRACKER_COOKIE, gateSlug, trackerOrigin } from '../config.js';
+import { isGateOpen } from './gate.js';
 
 // Handlers take the global `Request`, NOT a structural subset of it.
 //
@@ -42,7 +43,6 @@ import { GATE_COOKIE, TRACKER_BASE_PATH, TRACKER_COOKIE, gateSlug, trackerOrigin
 
 // The tracker's dt_session is an HS256 JWT: 3 base64url segments. We forward
 // ONLY a value of this shape (never the '1' presence-marker or anything else).
-const JWT_RE = /^[\w-]+\.[\w-]+\.[\w-]+$/;
 
 function parseCookies(header: string | null): Record<string, string> {
   const out: Record<string, string> = {};
@@ -315,7 +315,10 @@ export function createGateRoute(opts: GateRouteOptions): {
     const token = new URL(req.url).searchParams.get('t');
     if (token) return redeemGrant(req, token);
 
-    const authed = !!parseCookies(req.headers.get('cookie'))[GATE_COOKIE];
+    // Verified, not merely present: this answer is what /gate's self-heal uses
+    // to decide it can send the visitor to the storefront. Saying yes on an
+    // unverifiable cookie would bounce them straight back here.
+    const authed = await isGateOpen(parseCookies(req.headers.get('cookie'))[GATE_COOKIE]);
     return new Response(JSON.stringify({ authed, grant: true }), {
       headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
     });

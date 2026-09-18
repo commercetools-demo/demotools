@@ -37,7 +37,24 @@ process.env.NEXT_PUBLIC_DEMO_TRACKER_SITE = 'mydemo';
 const { editorPreviewVerdict, gateRedirectPath, DEFAULT_PREVIEW_PARAM } = await import(
   '../../dist/tracker/server/preview.js'
 );
-const { gateVerdict } = await import('../../dist/tracker/server/gate.js');
+const { gateVerdict, resetGateVerifyCache } = await import('../../dist/tracker/server/gate.js');
+
+// `gateVerdict` now verifies the cookie against the tracker's /session rather
+// than counting it, so these cases need a stand-in for that call. `x.y.z` is
+// the valid token throughout; anything else is refused.
+const realFetch = globalThis.fetch;
+function stubTracker(validToken = 'x.y.z') {
+  resetGateVerifyCache();
+  globalThis.fetch = async (_url, init) => {
+    const cookie = init?.headers?.cookie ?? '';
+    const ok = cookie === `dt_session=${validToken}`;
+    return new Response(null, { status: ok ? 200 : 401 });
+  };
+}
+function restoreFetch() {
+  globalThis.fetch = realFetch;
+  resetGateVerifyCache();
+}
 
 const MC = 'https://mc.us-central1.gcp.commercetools.com';
 const TOKEN = 'tok_abcdef0123456789';
@@ -135,28 +152,50 @@ test('6. the ?pb= hint rides on the redirect only for a non-document request', (
   assert.equal(gateRedirectPath(h({ 'sec-fetch-dest': 'iframe' }), '/gate?a=1'), '/gate?a=1&pb=iframe');
 });
 
-test('7. gateVerdict: cookie short-circuits, and no preview config means cookie-only', () => {
+test('7. gateVerdict: a verified cookie short-circuits, and no preview config means cookie-only', async () => {
   const framed = h({ 'sec-fetch-dest': 'iframe', referer: `${MC}/` });
-
-  assert.equal(gateVerdict({ gateCookieValue: 'x.y.z', headers: framed, preview: PREVIEW }), 'authed');
-  assert.equal(gateVerdict({ gateCookieValue: undefined, headers: framed, preview: PREVIEW }), 'editor-frame');
-  // A demo with no page builder: the editor exception does not exist.
-  assert.equal(gateVerdict({ gateCookieValue: undefined, headers: framed }), 'blocked');
-  assert.equal(gateVerdict({ gateCookieValue: undefined }), 'blocked');
-  assert.equal(gateVerdict({ gateCookieValue: 'x.y.z' }), 'authed');
+  stubTracker();
+  try {
+    assert.equal(await gateVerdict({ gateCookieValue: 'x.y.z', headers: framed, preview: PREVIEW }), 'authed');
+    assert.equal(await gateVerdict({ gateCookieValue: undefined, headers: framed, preview: PREVIEW }), 'editor-frame');
+    // A demo with no page builder: the editor exception does not exist.
+    assert.equal(await gateVerdict({ gateCookieValue: undefined, headers: framed }), 'blocked');
+    assert.equal(await gateVerdict({ gateCookieValue: undefined }), 'blocked');
+    assert.equal(await gateVerdict({ gateCookieValue: 'x.y.z' }), 'authed');
+  } finally {
+    restoreFetch();
+  }
 });
 
-test('7b. gateVerdict answers disabled when the gate is not enforced', () => {
+test('7c. an unverifiable cookie does not short-circuit past the preview check', async () => {
+  const framed = h({ 'sec-fetch-dest': 'iframe', referer: `${MC}/` });
+  stubTracker();
+  try {
+    // Forged shapes never reach the tracker; a well-shaped but unsigned token does
+    // and is refused. Neither may be reported as 'authed'.
+    assert.equal(await gateVerdict({ gateCookieValue: '1' }), 'blocked');
+    assert.equal(await gateVerdict({ gateCookieValue: 'a.b.c' }), 'blocked');
+    // Still the editor, despite arriving with a stale cookie.
+    assert.equal(
+      await gateVerdict({ gateCookieValue: 'a.b.c', headers: framed, preview: PREVIEW }),
+      'editor-frame',
+    );
+  } finally {
+    restoreFetch();
+  }
+});
+
+test('7b. gateVerdict answers disabled when the gate is not enforced', async () => {
   process.env.NODE_ENV = 'development';
   try {
-    assert.equal(gateVerdict({ gateCookieValue: undefined }), 'disabled');
+    assert.equal(await gateVerdict({ gateCookieValue: undefined }), 'disabled');
   } finally {
     process.env.NODE_ENV = 'production';
   }
   // Production but no slug configured (an ungated fork) is also disabled.
   delete process.env.NEXT_PUBLIC_DEMO_TRACKER_SITE;
   try {
-    assert.equal(gateVerdict({ gateCookieValue: undefined }), 'disabled');
+    assert.equal(await gateVerdict({ gateCookieValue: undefined }), 'disabled');
   } finally {
     process.env.NEXT_PUBLIC_DEMO_TRACKER_SITE = 'mydemo';
   }
