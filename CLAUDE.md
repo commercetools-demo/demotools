@@ -247,6 +247,39 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
+### The gate verifies the cookie — 6.0.0
+
+`isGateOpen()` asks the tracker whether the `demo_gate` cookie is a live session
+**for this slug**, and `gateVerdict()` is built on it. The cookie's value is the
+tracker's own `dt_session` JWT (`createGateRoute` puts it there), so it is
+evidence that can be checked rather than a flag that can be counted.
+
+Presence is not evidence. `demo_gate` is set by a route, not by a signature, so
+a truthiness test is satisfied by `document.cookie='demo_gate=1'` — or by one
+curl header, no browser needed. Under that rule the site password buys nothing
+on an app-gated demo, and the forged cookie also fails the proxy's JWT shape
+check, so the visit records no session and no events either.
+
+Three properties hold it together, all pinned by
+[`test/runtime/gate-verify.test.mjs`](test/runtime/gate-verify.test.mjs):
+
+- **The slug is part of the question.** `/session?site=<slug>` answers 401 when
+  the session's claims name a different demo, which is what stops one demo's
+  password opening another's.
+- **A verdict is cached for 10 minutes per lambda**, so reading a demo costs one
+  tracker call, not one per render. A malformed value is refused on shape alone
+  and never spends a round trip; refusals cache for 30s.
+- **An unreachable tracker is not a verdict.** A 5xx or a thrown fetch serves a
+  visitor already verified on this lambda from cache for up to 6 hours, so an
+  outage mid-presentation is invisible, and refuses everyone else — who could
+  not have authenticated anyway, since `/auth` is on the same tracker.
+
+**Both functions are now async.** Every consumer already calls them as
+`return isGateOpen(...)` inside an `async` wrapper, so the upgrade is a version
+bump with no code change — but a caller that treats the result as a bare boolean
+(`if (isGateOpen(x))`) would read a Promise as always-true and serve the site
+ungated. Check the call site when bumping.
+
 ### Analytics silently off without the gate noticing — fixed in 5.7.1
 
 `TrackerScripts` used to require **both** a slug and

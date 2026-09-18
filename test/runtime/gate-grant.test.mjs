@@ -26,11 +26,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createGateRoute } from '../../dist/tracker/server/routes.js';
-
 const HOME = '/en-us';
 const ORIGIN = 'https://tracker.example.test';
 const SESSION_JWT = 'aaa.bbb.ccc';
+
+// The GET handler's `authed` is a verified answer, not a cookie count, so the
+// gate has to be actually enforced here for these cases to mean anything —
+// otherwise every assertion below passes on an inert gate. `createGateRoute`'s
+// own `slug`/`origin` overrides don't reach that check; it reads the same env
+// the rest of the app does.
+process.env.NODE_ENV = 'production';
+process.env.NEXT_PUBLIC_DEMO_TRACKER_SITE = 'mydemo';
+process.env.NEXT_PUBLIC_DEMO_TRACKER_URL = ORIGIN;
+
+const { createGateRoute } = await import('../../dist/tracker/server/routes.js');
+const { resetGateVerifyCache } = await import('../../dist/tracker/server/gate.js');
 
 /**
  * Stub the tracker. `grantSession` is what /auth/grant hands back in Set-Cookie;
@@ -88,11 +98,29 @@ test('no token: reports the grant capability the tracker probes for', async () =
   assert.equal(body.authed, false);
 });
 
-test('no token: still reports authed from the gate cookie', async () => {
+test('no token: authed is the tracker\'s answer, not the presence of a cookie', async () => {
+  resetGateVerifyCache();
+  const { fetchImpl } = stubTracker();
   const { GET } = route();
-  const headers = new Headers({ cookie: `demo_gate=${SESSION_JWT}` });
-  const res = await GET(new Request('https://mydemo.ct-builders.ai/api/gate', { headers }));
-  assert.deepEqual(await res.json(), { authed: true, grant: true });
+  const ask = (cookie) =>
+    withFetch(fetchImpl, () =>
+      GET(new Request('https://mydemo.ct-builders.ai/api/gate', { headers: new Headers({ cookie }) })),
+    ).then((r) => r.json());
+
+  assert.deepEqual(await ask(`demo_gate=${SESSION_JWT}`), { authed: true, grant: true });
+
+  // The /gate self-heal navigates home on `authed`. A cookie the tracker never
+  // signed must not send the visitor to a page that will bounce them back here.
+  resetGateVerifyCache();
+  const { fetchImpl: rejectAll } = stubTracker({ sessionOk: false });
+  const bad = await withFetch(rejectAll, () =>
+    GET(
+      new Request('https://mydemo.ct-builders.ai/api/gate', {
+        headers: new Headers({ cookie: 'demo_gate=forged' }),
+      }),
+    ),
+  ).then((r) => r.json());
+  assert.deepEqual(bad, { authed: false, grant: true });
 });
 
 test('valid grant: sets the gate cookie to the tracker session', async () => {

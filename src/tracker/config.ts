@@ -17,6 +17,13 @@
  */
 export const GATE_COOKIE = 'demo_gate';
 
+/**
+ * Shape of a signed session token: three base64url segments. A `demo_gate` or
+ * `dt_session` value that fails this never belonged to the tracker, so it is
+ * refused without spending a round trip on it.
+ */
+export const JWT_RE = /^[\w-]+\.[\w-]+\.[\w-]+$/;
+
 /** The cookie the tracker itself reads to authenticate `/event` + `/session`. */
 export const TRACKER_COOKIE = 'dt_session';
 

@@ -11,6 +11,7 @@ export {
 export {
   isGateOpen,
   gateVerdict,
+  resetGateVerifyCache,
   type GateVerdict,
   type GateVerdictInput,
   editorPreviewVerdict,
