@@ -247,6 +247,44 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
+### `withGate()` — the API surface is not under the gate — 5.13.0
+
+The app gate is enforced in `app/[locale]/layout.tsx`. `app/api/**` is not under
+that tree, so a gated storefront still answers its own API to anyone who asks:
+
+```bash
+curl https://<demo>/api/product/search?q=mouse   # 200, no cookie
+curl https://<demo>/api/countries                # 200, no cookie
+```
+
+That surface reaches the live commercetools project — catalog reads, cart and
+customer writes, and whatever an LLM-backed route costs per call. `withGate()`
+wraps a handler so it answers 401 unless the caller has passed the gate:
+
+```ts
+export const GET = withGate(async (req: NextRequest) => { ... });
+```
+
+It reuses `isGateOpen`, so it is the same verified check and the same 10-minute
+cache, and it is inert wherever the gate is — local dev, and forks with no slug.
+
+**In the handler, not in middleware.** `@netlify/plugin-nextjs` does not deploy
+Next middleware as a routed edge handler, so a guard written there silently
+never runs — which reads as "protected" and is not. The wrapper runs in the same
+Node lambda the app gate already runs in, which is the only place on this stack
+known to execute.
+
+**Three routes stay unwrapped**, and a consumer adding a fourth should be able
+to say why in one line: the route that redeems a password or an admin grant
+(`/api/gate`), the tracker proxy (`/api/tracker/*` — it forwards to the tracker,
+which does its own auth, and exposes nothing of the demo), and any hand-off a
+visitor arrives through before they could hold a cookie
+(`/api/auth/impersonate`, entered from Merchant Center on a single-use token).
+
+Coverage is worth pinning in the consumer: a test that walks `app/api/**` and
+fails on an unwrapped handler turns "remember the wrapper" into a build error.
+See `test/api-gate-coverage.test.ts` in `b2c-starter`.
+
 ### The gate verifies the cookie — 5.12.0
 
 `isGateOpen()` asks the tracker whether the `demo_gate` cookie is a live session
