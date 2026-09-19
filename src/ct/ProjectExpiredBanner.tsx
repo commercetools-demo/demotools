@@ -2,7 +2,7 @@
  * Shown when the connected commercetools project's trial has expired, so the
  * project can no longer issue OAuth tokens and every storefront API call fails.
  * Render above the main content in the root layout — see `checkProjectActive()`
- * / `isProjectExpired()` in `@cboyke/demotools/ct/server`.
+ * / `isProjectExpired()` in `@ct-demos/demotools/ct/server`.
  *
  * Fatal (no data can load), so styled as an error rather than a warning.
  * Standard Tailwind classes only — the consumer's Tailwind must scan the

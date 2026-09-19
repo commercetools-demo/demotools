@@ -106,7 +106,7 @@ export class McpClient {
   constructor(opts: McpClientOptions) {
     this.url = opts.url;
     this.auth = opts.auth;
-    this.clientInfo = opts.clientInfo ?? { name: '@cboyke/demotools', version: '4' };
+    this.clientInfo = opts.clientInfo ?? { name: '@ct-demos/demotools', version: '4' };
     this.protocolVersion = opts.protocolVersion ?? DEFAULT_PROTOCOL_VERSION;
     this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;

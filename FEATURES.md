@@ -5,8 +5,8 @@ for what exists in the codebase — keep it updated when features change.
 
 _Last generated: 2026-09-02 by feature-doc._
 
-`@cboyke/demotools` is not a demo app itself — it is a published npm library
-(`@cboyke/demotools`, currently `5.9.1`) of reusable React components and
+`@ct-demos/demotools` is not a demo app itself — it is a published npm library
+(`@ct-demos/demotools`, currently `5.9.1`) of reusable React components and
 server-side helpers, shared across the commercetools pre-sales demo repos
 (b2b-starter, b2c-starter, bridge-provider/patient, etc.) via subpath exports.
 No build/dev/test commands were run to produce this document.
@@ -29,7 +29,7 @@ No build/dev/test commands were run to produce this document.
   peer dependencies**, required only by `/chat/tools`; the rest of the package
   is SDK-free so an MCP-only or non-chat consumer isn't forced to install them.
 - Ships its own `CLAUDE.md` inside the published package (`files` in
-  `package.json`) so it lands in a consumer's `node_modules/@cboyke/demotools/`
+  `package.json`) so it lands in a consumer's `node_modules/@ct-demos/demotools/`
   and is readable by an AI assistant wiring the library into a demo.
 - Build: `tsc` to `dist/` (`npm run build`); no bundler/minifier. `verify`
   chains typecheck → build → runtime tests and is `prepublishOnly`.
@@ -37,7 +37,7 @@ No build/dev/test commands were run to produce this document.
   `main` (`.github/workflows/*.yml`), skipping the publish step if the current
   `package.json` version is already on the registry.
 
-## UI components (`@cboyke/demotools`)
+## UI components (`@ct-demos/demotools`)
 
 - `<JsonViewer data={...} />` (`src/JsonViewer.tsx`) — VS Code Dark+-styled,
   searchable, collapsible JSON tree viewer: Enter/Shift+Enter match
@@ -180,7 +180,7 @@ demo consuming the package.
   content microsites) vs. "Demo access" for everything else; `<DemoGate
   siteType="content" />` selects the base and any `copy` overrides still merge
   on top. `gate-copy.ts` is published as its own React-free, dependency-free
-  `@cboyke/demotools/tracker/gate-copy` subpath (distinct from the `./tracker`
+  `@ct-demos/demotools/tracker/gate-copy` subpath (distinct from the `./tracker`
   barrel that re-exports `DemoGate`) specifically so the demo-tracker service's
   Netlify edge-gate template and `t.js` in-page overlay — neither a React app —
   can import the exact same copy instead of hand-mirroring three copies that

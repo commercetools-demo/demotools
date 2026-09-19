@@ -4,7 +4,7 @@
  * Each demo's route file becomes a one-liner:
  *
  *   // site/app/api/chat/route.ts
- *   import { makeChatRoute } from '@cboyke/demotools/chat/server';
+ *   import { makeChatRoute } from '@ct-demos/demotools/chat/server';
  *   import { tools, toolRegistry } from '@/lib/chat/tools';
  *   import { buildSystemPrompt } from '@/lib/chat/system-prompt';
  *   import { getSession } from '@/lib/session';
@@ -19,7 +19,7 @@
  *
  * The library doesn't ship with an OpenAI client because callers should pin
  * their own SDK version. A 5-line `openaiChatComplete` helper lives in each
- * consumer repo; we may publish a separate `@cboyke/demotools-openai` adapter
+ * consumer repo; we may publish a separate `@ct-demos/demotools-openai` adapter
  * in v4 if it proves useful.
  */
 
@@ -92,7 +92,7 @@ export interface MakeChatRouteOptions<Session, UiAction = UiActionBase> {
   onToolSourceError?: (error: unknown) => void;
   /**
    * The built-in commerce tool pack, from
-   * `createBuiltinToolSource` in `@cboyke/demotools/chat/tools`.
+   * `createBuiltinToolSource` in `@ct-demos/demotools/chat/tools`.
    *
    * Included when the tool-source mode is `builtin` (the default) or `both`, and
    * shadowed by `tools`/`toolRegistry` on name collisions.

@@ -1,6 +1,6 @@
-// @cboyke/demotools/tracker — client + isomorphic surface for the demo-tracker
+// @ct-demos/demotools/tracker — client + isomorphic surface for the demo-tracker
 // analytics + password-gate integration. Import server-only route factories and
-// gate helpers from `@cboyke/demotools/tracker/server`.
+// gate helpers from `@ct-demos/demotools/tracker/server`.
 
 export { track, trackBeacon } from './track.js';
 export { default as TrackEvent } from './TrackEvent.js';

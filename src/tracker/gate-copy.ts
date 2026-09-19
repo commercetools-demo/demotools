@@ -24,7 +24,7 @@
 //
 // Surfaces 2 and 3 live in the demo-tracker service, which is not a React app.
 // They `import` this module directly via the package's React-free
-// `@cboyke/demotools/tracker/gate-copy` subpath export — NOT via the
+// `@ct-demos/demotools/tracker/gate-copy` subpath export — NOT via the
 // `./tracker` barrel, which re-exports `DemoGate` and would drag the react /
 // react-dom peer deps into a Fastify service. Nothing is copied by hand and no
 // starter or demo overrides any of it, so a wording change here reaches every

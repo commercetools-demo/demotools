@@ -29,7 +29,7 @@
  * ## Usage
  *
  * ```ts
- * import { moneyFields, PRICE_FIELD_GUIDE } from '@cboyke/demotools/chat';
+ * import { moneyFields, PRICE_FIELD_GUIDE } from '@ct-demos/demotools/chat';
  *
  * const fmt = (m: Money) => formatMoney(m, displayLocale);
  *

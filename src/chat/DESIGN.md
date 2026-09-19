@@ -1,4 +1,4 @@
-# `@cboyke/demotools/chat` — design notes
+# `@ct-demos/demotools/chat` — design notes
 
 ## Why this exists
 
@@ -38,14 +38,14 @@ import {
   type ProductSummary, type CartSummary, type OrderSummary,
   type ActionSuggestion, type UiActionBase,
   ChatActionChips,
-} from '@cboyke/demotools/chat';
+} from '@ct-demos/demotools/chat';
 
 // Server: agent + route factories
 import {
   runChatTurn,
   makeChatRoute,
   type ChatComplete,
-} from '@cboyke/demotools/chat/server';
+} from '@ct-demos/demotools/chat/server';
 ```
 
 ## What's a one-liner for consumers
@@ -53,7 +53,7 @@ import {
 ```ts
 // site/app/api/chat/route.ts
 import OpenAI from 'openai';
-import { makeChatRoute } from '@cboyke/demotools/chat/server';
+import { makeChatRoute } from '@ct-demos/demotools/chat/server';
 import { NextResponse } from 'next/server';
 import { tools, toolRegistry } from '@/lib/chat/tools';
 import { buildSystemPrompt } from '@/lib/chat/system-prompt';
@@ -104,14 +104,14 @@ That's the entire `route.ts`. The demo's actual logic is in `tools.ts` +
 ## Testing strategy
 
 Smoke test the route factory by running the b2b chat-checkout Playwright
-spec against b2b-starter wired up with `@cboyke/demotools/chat/server`. If
+spec against b2b-starter wired up with `@ct-demos/demotools/chat/server`. If
 two BUs (Eagle, Liberty) still complete checkout end-to-end, the agent loop
 factoring is correct. b2c's existing checkout flow gives us a second
 consumer.
 
 ## Migration plan (when this PR lands)
 
-1. Merge + publish `@cboyke/demotools@4.0.0-rc.0`.
+1. Merge + publish `@ct-demos/demotools@4.0.0-rc.0`.
 2. b2b-starter PR: replace `site/lib/chat/agent.ts` and
    `site/app/api/chat/route.ts` with library imports. Smoke test with the
    chat-checkout spec.

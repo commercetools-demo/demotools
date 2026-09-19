@@ -1,4 +1,4 @@
-// @cboyke/demotools/ct/server — server-only commercetools resilience helpers.
+// @ct-demos/demotools/ct/server — server-only commercetools resilience helpers.
 // Keep out of 'use client' files (these read server env / do server fetches).
 
 export { getSessionSecret } from './session-secret.js';

@@ -1,4 +1,4 @@
-# @cboyke/demotools
+# @ct-demos/demotools
 
 Reusable React components and AI-chat scaffolding for building commercetools
 demos.
@@ -7,16 +7,16 @@ demos.
 
 The package exports these subpaths:
 
-| Import path                              | Contents                                       |
-|------------------------------------------|------------------------------------------------|
-| `@cboyke/demotools`                      | UI components (`JsonViewer`, `JsonModal`)      |
-| `@cboyke/demotools/chat`                 | Chat types, `ChatActionChips`                  |
-| `@cboyke/demotools/chat/server`          | Chat agent loop, route factory, MCP tool source, tool-source flag |
-| `@cboyke/demotools/chat/tools`           | Built-in commerce tools + `buildRelevanceQuery` |
-| `@cboyke/demotools/tracker`              | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
-| `@cboyke/demotools/tracker/server`       | Gate helpers, `createTrackerProxyRoute`, `createGateRoute` |
-| `@cboyke/demotools/ct`                   | `ProjectExpiredBanner`, `ProductSearchDisabledBanner`, image config |
-| `@cboyke/demotools/ct/server`            | `getSessionSecret`, project-status + product-search resilience |
+| Import path                                | Contents                                       |
+|--------------------------------------------|------------------------------------------------|
+| `@ct-demos/demotools`                      | UI components (`JsonViewer`, `JsonModal`)      |
+| `@ct-demos/demotools/chat`                 | Chat types, `ChatActionChips`                  |
+| `@ct-demos/demotools/chat/server`          | Chat agent loop, route factory, MCP tool source, tool-source flag |
+| `@ct-demos/demotools/chat/tools`           | Built-in commerce tools + `buildRelevanceQuery` |
+| `@ct-demos/demotools/tracker`              | `track`/`trackBeacon`, `TrackEvent`, `DemoGate`, `TrackerScripts` |
+| `@ct-demos/demotools/tracker/server`       | Gate helpers, `createTrackerProxyRoute`, `createGateRoute` |
+| `@ct-demos/demotools/ct`                   | `ProjectExpiredBanner`, `ProductSearchDisabledBanner`, image config |
+| `@ct-demos/demotools/ct/server`            | `getSessionSecret`, project-status + product-search resilience |
 
 The `chat/server`, `chat/tools`, `tracker/server` and `ct/server` entrypoints are
 server-only — keep them out of `'use client'` files (they bundle the LLM driver,
@@ -93,7 +93,7 @@ and its tools are discovered at runtime, converted to OpenAI function-call
 shape, and merged with the demo's local tools.
 
 ```ts
-import { createMcpToolSource } from '@cboyke/demotools/chat/server';
+import { createMcpToolSource } from '@ct-demos/demotools/chat/server';
 
 const mcp = createMcpToolSource<ToolContext>({
   url: process.env.CT_MCP_URL!,            // mcpServer.url from the MCP Server config
@@ -149,8 +149,8 @@ uses. **The default is `builtin`; MCP is off unless asked for.**
 
 ```ts
 // site/app/api/chat/route.ts
-import { makeChatRoute } from '@cboyke/demotools/chat/server';
-import { createBuiltinToolSource } from '@cboyke/demotools/chat/tools';
+import { makeChatRoute } from '@ct-demos/demotools/chat/server';
+import { createBuiltinToolSource } from '@ct-demos/demotools/chat/tools';
 
 export const POST = makeChatRoute({
   builtinToolSource: createBuiltinToolSource(),  // ← no wiring
@@ -261,7 +261,7 @@ system-prompt rules forbidding exactly this. Prose can't disambiguate an
 integer; field names and pre-formatting can.
 
 ```ts
-import { moneyFields, PRICE_FIELD_GUIDE } from '@cboyke/demotools/chat/server';
+import { moneyFields, PRICE_FIELD_GUIDE } from '@ct-demos/demotools/chat/server';
 
 const fmt = (m: Money) => formatMoney(m, displayLocale); // the demo's own formatter
 
@@ -322,7 +322,7 @@ bump.
 
 ### Wire-up sketch
 
-A new demo's chat surface is roughly: install `@cboyke/demotools`, write a
+A new demo's chat surface is roughly: install `@ct-demos/demotools`, write a
 `tools.ts` + `system-prompt.ts`, then 6 component shims (~10 lines each)
 that pass demo hooks/i18n into the library components.
 
@@ -330,7 +330,7 @@ that pass demo hooks/i18n into the library components.
 
 ```ts
 import OpenAI from 'openai';
-import { runChatTurn, type ChatComplete } from '@cboyke/demotools/chat/server';
+import { runChatTurn, type ChatComplete } from '@ct-demos/demotools/chat/server';
 import { NextResponse } from 'next/server';
 import { TOOLS } from '@/lib/chat/tool-defs';
 import { executeTool, type ToolContext } from '@/lib/chat/tools';
@@ -387,7 +387,7 @@ export async function POST(request: Request) {
 ```ts
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { makeSpeakRoute } from '@cboyke/demotools/chat/server';
+import { makeSpeakRoute } from '@ct-demos/demotools/chat/server';
 
 export const POST = makeSpeakRoute({
   openai: new OpenAI() as never,
@@ -401,7 +401,7 @@ component. Same shape across all 7 components:
 ```tsx
 // site/components/chat/ChatActionChips.tsx
 'use client';
-import { ChatActionChips as LibChatActionChips } from '@cboyke/demotools/chat';
+import { ChatActionChips as LibChatActionChips } from '@ct-demos/demotools/chat';
 import { useChat } from '@/context/ChatContext';
 
 export function ChatActionChips({ suggestions }) {
@@ -421,7 +421,7 @@ export function ChatActionChips({ suggestions }) {
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChatProductTile as LibChatProductTile } from '@cboyke/demotools/chat';
+import { ChatProductTile as LibChatProductTile } from '@ct-demos/demotools/chat';
 import { useChat } from '@/context/ChatContext';
 import { useCart } from '@/context/CartContext';
 import { useFormatters } from '@/hooks/useFormatters';
@@ -464,13 +464,21 @@ for the held-back surface.
 ## Installation
 
 ```bash
-npm install @cboyke/demotools
+npm install @ct-demos/demotools
 ```
+
+`@cboyke/demotools` stays on npm at 5.13.0 and keeps resolving, so a demo that
+has not moved yet builds untouched. Nothing new publishes there.
+
+Moving a demo across is two edits in the same commit, not one — the dependency,
+**and** the Tailwind content path below. The class-name literals live in the
+package directory, so a scan still pointing at `@cboyke` matches nothing the
+moment the dependency changes, and the styling failure is silent.
 
 For local development, link from a sibling checkout:
 
 ```json
-{ "dependencies": { "@cboyke/demotools": "file:../demotools" } }
+{ "dependencies": { "@ct-demos/demotools": "file:../demotools" } }
 ```
 
 ## Tailwind
@@ -490,7 +498,7 @@ export default {
   content: [
     './index.html',
     './src/**/*.{js,jsx,ts,tsx}',
-    './node_modules/@cboyke/demotools/dist/**/*.js', // ← required
+    './node_modules/@ct-demos/demotools/dist/**/*.js', // ← required
   ],
   // ...
 };
@@ -500,7 +508,7 @@ export default {
 
 ```css
 @import "tailwindcss";
-@source "../node_modules/@cboyke/demotools/dist/**/*.js";
+@source "../node_modules/@ct-demos/demotools/dist/**/*.js";
 ```
 
 After adding the path, restart the dev server (a hot reload of
