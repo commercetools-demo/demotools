@@ -7,6 +7,7 @@ export {
   withGate,
   type TrackerProxyOptions,
   type GateRouteOptions,
+  type WithGateOptions,
 } from './routes.js';
 
 export {
