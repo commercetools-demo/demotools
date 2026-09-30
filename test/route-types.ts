@@ -26,7 +26,7 @@
 //
 // Run: npm test  (tsc --noEmit -p tsconfig.test.json)
 
-import { createGateRoute, createTrackerProxyRoute } from '../src/tracker/server/index';
+import { createGateRoute, createTrackerProxyRoute, withGate } from '../src/tracker/server/index';
 import { makeChatRoute } from '../src/chat/server/route-factories';
 import { makeSpeakRoute, makeTranscribeRoute } from '../src/chat/server/audio-routes';
 import type { ChatComplete } from '../src/chat/agent';
@@ -53,6 +53,16 @@ const gate = createGateRoute({ homePath: '/en-us' });
 export const createGateRoute_GET: true = proof(gate.GET);
 export const createGateRoute_POST: true = proof(gate.POST);
 export const createTrackerProxyRoute_handler: true = proof(createTrackerProxyRoute());
+
+// `withGate` is a wrapper, not a factory: it must hand back the handler's own
+// first-argument type, so a route that declared `NextRequest` still declares it
+// after wrapping. The second parameter is the thing at risk — an options object
+// inferred from is another candidate site for `R`, and a wrapper that collapsed
+// `R` to something Next does not accept would break the same builds.
+export const withGate_plain: true = proof(withGate(async (_req: Request) => new Response()));
+export const withGate_bypassed: true = proof(
+  withGate(async (_req: Request) => new Response(), { bypass: async () => false }),
+);
 
 declare const chatComplete: ChatComplete;
 export const makeChatRoute_POST: true = proof(
@@ -87,3 +97,8 @@ type NextRouteHandler = (
 export const callable_gate_GET: NextRouteHandler = gate.GET;
 export const callable_gate_POST: NextRouteHandler = gate.POST;
 export const callable_trackerProxy: NextRouteHandler = createTrackerProxyRoute();
+export const callable_withGate: NextRouteHandler = withGate(
+  async (_req: Request, _ctx: { params: Promise<Record<string, string | string[] | undefined>> }) =>
+    new Response(),
+  { bypass: () => false },
+);

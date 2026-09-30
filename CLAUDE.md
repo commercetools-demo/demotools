@@ -295,6 +295,65 @@ Coverage is worth pinning in the consumer: a test that walks `app/api/**` and
 fails on an unwrapped handler turns "remember the wrapper" into a build error.
 See `test/api-gate-coverage.test.ts` in `b2c-starter`.
 
+### A session-borne grant gets through too — `bypass` — 6.1.0
+
+`withGate` reads the `demo_gate` cookie. That is the whole story for a shopper,
+and half of it for a demo with assisted ordering: a Customer Service agent's
+grant rides on the storefront's own session (`CsrContext.gateBypass`), because
+the storefront cannot mint the tracker-signed `dt_session` JWT the cookie check
+verifies — there is nothing it could write into `demo_gate`.
+
+An app with a second way in hands it over, and both layers then answer the same
+question:
+
+```ts
+// site/lib/gate-api.ts — next-intl free, so a route file can import it
+import { withGate as libWithGate } from '@ct-demos/demotools/tracker/server';
+import { getSession } from '@/lib/session';
+
+const csrHoldsGate = async () => (await getSession()).csr?.gateBypass === true;
+
+export const withGate = <R extends Request, A extends unknown[]>(
+  handler: (req: R, ...rest: A) => Response | Promise<Response>,
+) => libWithGate(handler, { bypass: csrHoldsGate });
+
+// site/app/api/account/profile/route.ts
+import { withGate } from '@/lib/gate-api';
+export const GET = withGate(async (req: NextRequest) => { ... });
+```
+
+Four properties, all pinned by
+[`test/runtime/with-gate.test.mjs`](test/runtime/with-gate.test.mjs):
+
+- **No `bypass` is the cookie-only guard, byte for byte** — same status, same
+  body, same headers. A demo that passes nothing is unaffected.
+- **Consulted after `isGateEnabled()` and before the cookie**, the same order as
+  the page gate's `isDemoGateOpen` and for the same reason: the app's check is
+  local to a session it already holds, the cookie's can reach the tracker. An
+  ungated fork asks neither.
+- **Only `true` grants.** A bypass that returns the session object rather than
+  the flag on it is truthy and opens nothing.
+- **A throw is not an answer.** A session module that fails to decode falls
+  through to the cookie check, rather than taking the API down or letting the
+  request past.
+
+**The disagreement is invisible until the storefront is embedded.** In a
+first-party tab the agent's browser usually already carries a `SameSite=Lax`
+`demo_gate` from an ordinary visit, so it rides along and every route passes.
+Inside the Merchant Center the storefront is a third-party frame, a Lax cookie
+is never sent, and every gated route answers 401 — while pages still render
+(they go through the session-aware gate) and the CSR banner still names the
+customer. So it surfaces as the header swapping the shopper's name for
+"Account" one click into the session, not as an error anyone can see. On
+petco-b2c (2026-09-30) `GET /api/account/profile` with no cookies answered
+`{"error":"Demo access required"}` — the gate refusing, where the session's own
+refusal reads `{"error":"Not authenticated"}`.
+
+**The demos that need it are the ones with both a tracker gate and assisted
+ordering** — `b2c-starter` and `b2c-omnichannel-starter`, and every fork of
+them. The library stays session-agnostic: it cannot import an app's session
+module, and does not try to.
+
 ### The gate verifies the cookie — 5.12.0
 
 `isGateOpen()` asks the tracker whether the `demo_gate` cookie is a live session

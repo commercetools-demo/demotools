@@ -18,7 +18,7 @@
 //   export const { GET, POST } = createGateRoute({ homePath: GATE_HOME_PATH });
 //   export const dynamic = 'force-dynamic';
 
-import { GATE_COOKIE, JWT_RE, TRACKER_BASE_PATH, TRACKER_COOKIE, gateSlug, trackerOrigin } from '../config.js';
+import { GATE_COOKIE, JWT_RE, TRACKER_BASE_PATH, TRACKER_COOKIE, gateSlug, isGateEnabled, trackerOrigin } from '../config.js';
 import { isGateOpen } from './gate.js';
 
 // Handlers take the global `Request`, NOT a structural subset of it.
@@ -141,6 +141,61 @@ export function createTrackerProxyRoute(
 }
 
 /**
+ * Options for `withGate`.
+ */
+export interface WithGateOptions {
+  /**
+   * A second way through the gate, owned by the app.
+   *
+   * The `demo_gate` cookie is the whole story for a shopper and half of it for
+   * a demo with assisted ordering. A Customer Service agent's grant rides on
+   * the storefront's own session (`CsrContext.gateBypass`) because a storefront
+   * cannot mint the tracker-signed `dt_session` JWT the cookie check verifies —
+   * there is nothing it could write into `demo_gate`. So the page gate reads
+   * the session and lets the agent in, while a route wrapped without `bypass`
+   * reads only the cookie and refuses.
+   *
+   * The two layers disagreeing is invisible in a first-party tab, where the
+   * agent's browser usually already carries a `SameSite=Lax` `demo_gate` from
+   * an ordinary visit and it rides along. Inside the Merchant Center the
+   * storefront is a third-party frame, a Lax cookie is never sent, and every
+   * gated route answers 401 while pages still render and the CSR banner still
+   * names the customer — so it surfaces as a header swapping the shopper's name
+   * for "Account", not as an error anyone can see. Measured on petco-b2c
+   * 2026-09-30: `GET /api/account/profile` with no cookies answered
+   * `{"error":"Demo access required"}`, the gate refusing, where the session's
+   * own refusal reads `{"error":"Not authenticated"}`.
+   *
+   * Consulted only when the gate is on, and before the cookie — the app's check
+   * is local to a session it already holds, the cookie's can reach the tracker.
+   * Same order as the page gate's `isDemoGateOpen`, for the same reason.
+   *
+   * Only `true` opens the gate, so a bypass that returns a session object by
+   * mistake grants nothing. A throw is not an answer either: a session module
+   * that fails to decode falls through to the cookie check rather than taking
+   * the whole API down or letting the request past.
+   *
+   * The library stays session-agnostic — it cannot import an app's session
+   * module — and a caller that supplies no bypass gets exactly the cookie
+   * check, unchanged.
+   */
+  bypass?: (req: Request) => boolean | Promise<boolean>;
+}
+
+/** Cheapest first: the env, then the app's own grant, then the verified cookie. */
+async function apiGateOpen(req: Request, bypass: WithGateOptions['bypass']): Promise<boolean> {
+  if (!isGateEnabled()) return true;
+  if (bypass) {
+    try {
+      if ((await bypass(req)) === true) return true;
+    } catch {
+      // A bypass that throws has not said yes. Fall through to the cookie.
+    }
+  }
+  return isGateOpen(parseCookies(req.headers.get('cookie'))[GATE_COOKIE]);
+}
+
+/**
  * Wrap a route handler so it answers 401 unless the caller has passed the gate.
  *
  * The gate lives in `app/[locale]/layout.tsx`, which route handlers never render
@@ -156,6 +211,11 @@ export function createTrackerProxyRoute(
  *
  *     export const GET = withGate(async (req: NextRequest) => { ... });
  *
+ * A demo whose page gate has a second way in hands it over as `bypass`, so both
+ * layers answer the same question — see `WithGateOptions.bypass`:
+ *
+ *     export const GET = withGate(handler, { bypass: csrSessionHoldsGate });
+ *
  * Inert wherever the gate is: local dev, and forks with no slug configured.
  * Leave the gate's own entry points unwrapped — the route that redeems a
  * password or a grant, the tracker proxy, and any hand-off a visitor arrives
@@ -163,16 +223,15 @@ export function createTrackerProxyRoute(
  */
 export function withGate<R extends Request, A extends unknown[]>(
   handler: (req: R, ...rest: A) => Response | Promise<Response>,
+  opts: WithGateOptions = {},
 ): (req: R, ...rest: A) => Promise<Response> {
+  const { bypass } = opts;
   return async function gated(req: R, ...rest: A): Promise<Response> {
-    const cookie = parseCookies(req.headers.get('cookie'))[GATE_COOKIE];
-    if (!(await isGateOpen(cookie))) {
-      return new Response(JSON.stringify({ error: 'Demo access required' }), {
-        status: 401,
-        headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
-      });
-    }
-    return handler(req, ...rest);
+    if (await apiGateOpen(req, bypass)) return handler(req, ...rest);
+    return new Response(JSON.stringify({ error: 'Demo access required' }), {
+      status: 401,
+      headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+    });
   };
 }
 
