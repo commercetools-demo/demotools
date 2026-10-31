@@ -26,7 +26,7 @@ test('a slug alone is enough — no NEXT_PUBLIC_DEMO_TRACKER_URL required', () =
   // The tracker origin must not appear client-side at all: t.js derives its API
   // base from document.currentScript, which is what keeps requests first-party
   // (the iOS Safari ITP fix).
-  assert.doesNotMatch(html, /tracker\.ctdemo\.net/);
+  assert.doesNotMatch(html, /tracker\.ct-builders\.ai/);
 });
 
 test('no slug means no scripts (an unconfigured fork stays clean)', () => {

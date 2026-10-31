@@ -55,7 +55,7 @@ export default function TrackerScripts({
   const slug = site ?? trackerSite();
   // Slug only. This used to ALSO require NEXT_PUBLIC_DEMO_TRACKER_URL, which is
   // documented as optional everywhere else (`trackerOrigin()` defaults it to
-  // https://tracker.ctdemo.net) — and which this component doesn't even use: the
+  // https://tracker.ct-builders.ai) — and which this component doesn't even use: the
   // script is loaded from the first-party proxy path, and `t.js` derives its API
   // base from `document.currentScript`. So the tracker origin never appears in
   // the client at all.

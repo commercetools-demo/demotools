@@ -215,7 +215,7 @@ demo consuming the package.
   cookie check) when no `preview` config is supplied.
 - Gate is inert unless `NODE_ENV === 'production'` and a tracker slug
   (`NEXT_PUBLIC_DEMO_TRACKER_SITE`) is set; `NEXT_PUBLIC_DEMO_TRACKER_URL` is
-  optional (defaults to `https://tracker.ctdemo.net`) and only the slug drives
+  optional (defaults to `https://tracker.ct-builders.ai`) and only the slug drives
   both the gate and script loading, so the two can't disagree.
 - Cookie is `demo_gate`, `SameSite=Lax`, with a same-site self-heal — chosen
   specifically to avoid iOS Safari ITP reclassifying the site as a bounce
