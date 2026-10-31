@@ -229,6 +229,7 @@ export default function DemoGate({
             name="consent"
             value="on"
             checked={consent}
+            aria-describedby="demo-gate-data-note"
             onChange={(e) => setConsent(e.target.checked)}
             style={{ marginTop: 3, width: 16, height: 16, flex: 'none', accentColor: accent }}
           />
@@ -244,6 +245,17 @@ export default function DemoGate({
             </a>
           </span>
         </label>
+        <div id="demo-gate-data-note" style={{ ...HINT_STYLE, paddingLeft: 26 }}>
+          {t.dataNotice} ·{' '}
+          <a
+            href={t.dataUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: accent, textDecoration: 'underline' }}
+          >
+            {t.dataLabel}
+          </a>
+        </div>
         {consent && (
           <>
             <label htmlFor="demo-gate-email" style={LABEL_STYLE}>

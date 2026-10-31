@@ -8,8 +8,9 @@
 // the whole gate.
 //
 // So the password carries a hint that names whose credential it is, the box says
-// exactly what is recorded and why and links the privacy policy, and the failure
-// message says which field was wrong.
+// exactly what is recorded and why and links the privacy policy, a data note
+// under the box says where the record is kept and links the page where a visitor
+// downloads or erases it, and the failure message says which field was wrong.
 //
 // This module is deliberately free of React and of every runtime dependency —
 // it is nothing but strings and the type describing them. It is the single
@@ -49,6 +50,15 @@ export interface DemoGateCopy {
   privacyLabel: string;
   /** Where the privacy-policy link goes. */
   privacyUrl: string;
+  /**
+   * Small print under the consent box: how the record is handled. Followed by
+   * the data-page link.
+   */
+  dataNotice: string;
+  /** Text of the link after the data note. */
+  dataLabel: string;
+  /** The tracker's privacy page, where a visitor downloads or erases their record. */
+  dataUrl: string;
   emailLabel: string;
   emailPlaceholder: string;
   /** Small print under the email field, shown once the box is ticked. */
@@ -68,6 +78,17 @@ export interface DemoGateCopy {
 /** commercetools' privacy policy, linked from every gate's consent box. */
 export const PRIVACY_POLICY_URL = 'https://commercetools.com/privacy';
 
+/** The tracker's privacy page: what it holds, plus self-service download and erasure. */
+export const DATA_PAGE_URL = 'https://tracker.ctdemo.net/privacy';
+
+/**
+ * The data note under the consent box. Every claim in it is a property of the
+ * tracker: it runs on GDPR terms, everything personal is stored in
+ * europe-west1, and the data page downloads or erases a visitor's record on the
+ * spot.
+ */
+export const DATA_NOTICE = 'GDPR compliant · stored in the EU · download or erase it any time';
+
 /**
  * The consent box's label. Identical on every surface and every site type: it
  * describes what the tracker records, which does not change with the site.
@@ -82,6 +103,9 @@ export const DEMO_GATE_COPY: DemoGateCopy = {
   consentLabel: CONSENT_LABEL,
   privacyLabel: 'Privacy policy',
   privacyUrl: PRIVACY_POLICY_URL,
+  dataNotice: DATA_NOTICE,
+  dataLabel: 'Your data',
+  dataUrl: DATA_PAGE_URL,
   emailLabel: 'Your email address',
   emailPlaceholder: 'you@company.com',
   emailHint:
@@ -109,6 +133,9 @@ export const EVAL_ROOM_GATE_COPY: DemoGateCopy = {
   consentLabel: CONSENT_LABEL,
   privacyLabel: 'Privacy policy',
   privacyUrl: PRIVACY_POLICY_URL,
+  dataNotice: DATA_NOTICE,
+  dataLabel: 'Your data',
+  dataUrl: DATA_PAGE_URL,
   emailLabel: 'Your email address',
   emailPlaceholder: 'you@company.com',
   emailHint:
@@ -136,13 +163,19 @@ export function gateCopyForSiteType(siteType?: string | null): DemoGateCopy {
   return siteType === 'content' ? EVAL_ROOM_GATE_COPY : DEMO_GATE_COPY;
 }
 
-// What the consent box says is recorded, and where the privacy policy lives,
-// are not a demo's to reword: the label is what the visitor agreed to.
-const FIXED_KEYS: ReadonlySet<keyof DemoGateCopy> = new Set(['consentLabel', 'privacyUrl']);
+// What the consent box says is recorded, how that record is handled, and where
+// the privacy policy and the data page live are not a demo's to reword: the
+// label is what the visitor agreed to, and the note is a compliance statement.
+const FIXED_KEYS: ReadonlySet<keyof DemoGateCopy> = new Set([
+  'consentLabel',
+  'privacyUrl',
+  'dataNotice',
+  'dataUrl',
+]);
 
 /**
  * Merge caller overrides over a base set. Undefined/empty overrides are ignored,
- * and so is any override of the consent label or the privacy-policy URL.
+ * and so is any override of the consent label, the data note or either URL.
  */
 export function resolveGateCopy(
   overrides?: Partial<DemoGateCopy>,

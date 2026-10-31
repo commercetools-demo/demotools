@@ -7,6 +7,8 @@ export { default as TrackEvent } from './TrackEvent.js';
 export { default as DemoGate, type DemoGateProps } from './DemoGate.js';
 export {
   CONSENT_LABEL,
+  DATA_NOTICE,
+  DATA_PAGE_URL,
   PRIVACY_POLICY_URL,
   DEMO_GATE_COPY,
   EVAL_ROOM_GATE_COPY,

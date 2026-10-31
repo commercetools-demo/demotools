@@ -20,6 +20,8 @@
 //      own RFP response should not be told it is a demo — while keeping the
 //      whose-credential hint and the consent box, which (1)-(4) are about.
 //   7. No demo can reword the consent label or move the privacy link.
+//   8. The data note sits under the box on every gate, links the tracker's
+//      privacy page, and no demo can reword it or move the link.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -39,6 +41,7 @@ const render = (props) =>
 
 const CONSENT =
   'Record my visit — my email, the pages I view and my browser — so the commercetools team can follow up.';
+const DATA_NOTE = 'GDPR compliant · stored in the EU · download or erase it any time';
 
 /** The consent checkbox's own tag. */
 const checkbox = (html) => html.match(/<input[^>]*type="checkbox"[^>]*>/)?.[0] ?? '';
@@ -92,6 +95,17 @@ test('no demo can reword the consent label or move the privacy link', () => {
   assert.equal(EVAL_ROOM_GATE_COPY.consentLabel, CONSENT);
 });
 
+test('no demo can reword the data note or move the data-page link', () => {
+  const copy = resolveGateCopy({ dataNotice: 'We keep it forever', dataUrl: 'https://example.com', dataLabel: 'Ihre Daten' });
+  assert.equal(copy.dataNotice, DATA_NOTE);
+  assert.equal(copy.dataUrl, 'https://tracker.ctdemo.net/privacy');
+  assert.equal(copy.dataLabel, 'Ihre Daten');
+  assert.equal(EVAL_ROOM_GATE_COPY.dataNotice, DATA_NOTE);
+  for (const html of [render({ open: true }), render({ siteType: 'content' })]) {
+    assert.ok(html.includes(DATA_NOTE));
+  }
+});
+
 test('no gate surface ever says "username"', () => {
   for (const html of [render(), render({ open: true })]) {
     assert.doesNotMatch(html, /username/i);
@@ -141,7 +155,9 @@ test('site_type picks the base copy; only `content` is an evaluation room', () =
 const visibleText = (html) => html.replace(/<[^>]*>/g, ' ');
 
 test('the evaluation-room gate never says "demo"', () => {
-  for (const v of Object.values(EVAL_ROOM_GATE_COPY)) {
+  // Link targets are not read: the tracker's own host is ctdemo.net.
+  for (const [k, v] of Object.entries(EVAL_ROOM_GATE_COPY)) {
+    if (k.endsWith('Url')) continue;
     assert.doesNotMatch(v, /demo/i);
   }
   for (const html of [

@@ -265,12 +265,17 @@ the label and the privacy link are specified in the presales plugin's
 `demo-tracker-site` skill, ***Personal data and consent***.
 
 - **`DemoGate`** renders the box unticked under the password, with
-  `CONSENT_LABEL` and a link to `PRIVACY_POLICY_URL`. The email field appears
+  `CONSENT_LABEL` and a link to `PRIVACY_POLICY_URL`. Under it sits
+  `DATA_NOTICE` ("GDPR compliant · stored in the EU · download or erase it any
+  time") with a "Your data" link to `DATA_PAGE_URL`, the tracker's privacy page,
+  where a visitor downloads or erases their record. The checkbox points at the
+  note through `aria-describedby`. The email field appears
   only once the box is ticked, so it is posted only with the tick. An open site
   has no password field, so its gate is the box and a Continue button: the
   visitor gets in on the consent choice alone. `resolveGateCopy` ignores
-  overrides of `consentLabel` and `privacyUrl`, because the label is what the
-  visitor agreed to.
+  overrides of `consentLabel`, `privacyUrl`, `dataNotice` and `dataUrl`, because
+  the label is what the visitor agreed to and the note is a compliance
+  statement. The two link texts can be translated.
 - **`createGateRoute`** posts `{ site, password }` to the tracker's `/auth` without
   the tick, and `{ site, email, password, consent: true }` with it. The tracker
   writes nothing for the first and records the visit for the second; either way

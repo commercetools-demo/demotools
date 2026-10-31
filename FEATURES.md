@@ -175,8 +175,10 @@ demo consuming the package.
   reveals the email field and records the visit, leaving it unticked lets the
   visitor in on the password alone with nothing recorded. The copy names the
   password as shared ("ask whoever sent the link") and the email as the
-  visitor's own with no account behind it; overridable per demo via a `copy`
-  prop, except the consent label and privacy link.
+  visitor's own with no account behind it. Under the box a data note (6.3.0)
+  reads "GDPR compliant · stored in the EU · download or erase it any time"
+  and links the tracker's privacy page. Overridable per demo via a `copy` prop,
+  except the consent label, the data note and both links.
 - **Consent-aware tracking (6.2.0)** — `gateConsent()` reads the visitor's choice
   from the tracker's `/session`; `createGateRoute` sends the email and
   `consent: true` only with the tick; the gated proxy forwards only a consenting
