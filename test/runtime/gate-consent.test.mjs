@@ -1,12 +1,12 @@
 // Runtime tests for the gate's consent rule.
 //
-// A visit is recorded only when the visitor ticks the gate's consent box, and a
-// visitor who leaves it unticked still gets in. Three places carry that, and
-// none of it type-checks:
+// A visit is recorded only when the visitor gives the gate an email, and a
+// visitor who leaves it blank still gets in. Three places carry that, and none
+// of it type-checks:
 //
-//   1. `createGateRoute` sends the email to the tracker only with the tick, and
-//      sends the tick itself as `consent: true`. Without it the tracker gets the
-//      password alone — on an open site, nothing but the slug.
+//   1. `createGateRoute` sends an email to the tracker with `consent: true`.
+//      A blank one sends the password alone — on an open site, nothing but the
+//      slug.
 //   2. The gated tracker proxy forwards only a consenting visitor. Everyone else
 //      is answered locally: a silent stand-in for `t.js`, and `/session` and
 //      `/event` answered as the tracker would, so nothing reaches the tracker.
@@ -69,18 +69,17 @@ const gatePost = (fields) =>
 
 const authBody = (calls) => JSON.parse(calls.find((c) => c.url.endsWith('/auth')).body);
 
-test('1a. no tick: the tracker gets the password alone, never the email', async () => {
+test('1a. a blank email: the tracker gets the password alone', async () => {
   const calls = stubTracker();
   const { POST } = createGateRoute({ homePath: '/en-us' });
-  // A browser that kept an email in the field from an earlier tick still sends
-  // nothing but the password.
-  const res = await POST(gatePost({ password: 'hunter2', email: 'jen@example.com' }));
+  // The form always posts the field; whitespace is as blank as nothing.
+  const res = await POST(gatePost({ password: 'hunter2', email: '   ' }));
   assert.equal(res.status, 303);
   assert.deepEqual(authBody(calls), { site: 'mydemo', password: 'hunter2' });
   assert.match(res.headers.get('set-cookie'), new RegExp(`^demo_gate=${DECLINED};`));
 });
 
-test('1b. no tick on an open site: in on the consent choice alone', async () => {
+test('1b. no email on an open site: in on Continue alone', async () => {
   const calls = stubTracker();
   const { POST } = createGateRoute({ homePath: '/en-us' });
   const res = await POST(gatePost({}));
@@ -89,10 +88,10 @@ test('1b. no tick on an open site: in on the consent choice alone', async () => 
   assert.deepEqual(authBody(calls), { site: 'mydemo', password: '' });
 });
 
-test('1c. a tick sends the email and the consent', async () => {
+test('1c. an email is the opt-in: it is sent with the consent', async () => {
   const calls = stubTracker({ authToken: CONSENTED });
   const { POST } = createGateRoute({ homePath: '/en-us' });
-  const res = await POST(gatePost({ password: 'hunter2', consent: 'on', email: ' jen@example.com ' }));
+  const res = await POST(gatePost({ password: 'hunter2', email: ' jen@example.com ' }));
   assert.equal(res.status, 303);
   assert.deepEqual(authBody(calls), {
     site: 'mydemo',
@@ -101,6 +100,18 @@ test('1c. a tick sends the email and the consent', async () => {
     consent: true,
   });
   assert.match(res.headers.get('set-cookie'), new RegExp(`^demo_gate=${CONSENTED};`));
+});
+
+test('1d. a 6.3 gate page still open in a tab posts the tick and the email, and records', async () => {
+  const calls = stubTracker({ authToken: CONSENTED });
+  const { POST } = createGateRoute({ homePath: '/en-us' });
+  await POST(gatePost({ password: 'hunter2', consent: 'on', email: 'jen@example.com' }));
+  assert.deepEqual(authBody(calls), {
+    site: 'mydemo',
+    email: 'jen@example.com',
+    password: 'hunter2',
+    consent: true,
+  });
 });
 
 const proxy = createTrackerProxyRoute({ mode: 'gated' });

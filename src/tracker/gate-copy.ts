@@ -1,16 +1,17 @@
 // Canonical wording for the demo-tracker access gate.
 //
 // The gate asks for a password (OURS, shared by everyone who was sent the link)
-// and offers an unticked consent box. A visitor who ticks it gives an email
-// address (THEIR own, with no account behind it) and has the visit recorded; a
-// visitor who leaves it unticked gets in on the password alone and nothing about
-// them is stored. On an open site there is no password, so the consent choice is
-// the whole gate.
+// and offers an optional email field (THEIR own, with no account behind it).
+// The email field is the opt-in: a visitor who fills it in has the visit
+// recorded, and a visitor who leaves it blank gets in on the password alone with
+// nothing about them stored. On an open site there is no password, so the gate
+// is the optional email and a Continue button.
 //
-// So the password carries a hint that names whose credential it is, the box says
-// exactly what is recorded and why and links the privacy policy, a data note
-// under the box says where the record is kept and links the page where a visitor
-// downloads or erases it, and the failure message says which field was wrong.
+// So the password carries a hint that names whose credential it is, the email
+// field's small print says exactly what giving it records and why and links the
+// privacy policy, a data note under that says where the record is kept and links
+// the page where a visitor downloads or erases it, and the failure message says
+// which field was wrong.
 //
 // This module is deliberately free of React and of every runtime dependency —
 // it is nothing but strings and the type describing them. It is the single
@@ -42,8 +43,8 @@ export interface DemoGateCopy {
   /** Sub-heading on an open (email-only) site. */
   introOpen: string;
   /**
-   * The consent box's label: what is recorded and why. Shown beside an unticked
-   * checkbox, followed by the privacy-policy link.
+   * The email field's small print: what giving an email records and why, and
+   * that a blank field records nothing. Followed by the privacy-policy link.
    */
   consentLabel: string;
   /** Text of the privacy-policy link after the consent label. */
@@ -51,7 +52,7 @@ export interface DemoGateCopy {
   /** Where the privacy-policy link goes. */
   privacyUrl: string;
   /**
-   * Small print under the consent box: how the record is handled. Followed by
+   * Small print under the consent label: how the record is handled. Followed by
    * the data-page link.
    */
   dataNotice: string;
@@ -61,8 +62,11 @@ export interface DemoGateCopy {
   dataUrl: string;
   emailLabel: string;
   emailPlaceholder: string;
-  /** Small print under the email field, shown once the box is ticked. */
-  emailHint: string;
+  /**
+   * @deprecated Not rendered. The consent label is the email field's small
+   * print; accepted so existing `copy` overrides still type-check.
+   */
+  emailHint?: string;
   passwordLabel: string;
   /** Small print under the password field: it's ours and it's shared. */
   passwordHint: string;
@@ -71,18 +75,18 @@ export interface DemoGateCopy {
   emailInvalid: string;
   /** Failed submit on a password-protected site. */
   error: string;
-  /** Failed submit on an open site (only a ticked visitor's email can be at fault). */
+  /** Failed submit on an open site (only the visitor's email can be at fault). */
   errorOpen: string;
 }
 
-/** commercetools' privacy policy, linked from every gate's consent box. */
+/** commercetools' privacy policy, linked from every gate's consent label. */
 export const PRIVACY_POLICY_URL = 'https://commercetools.com/privacy';
 
 /** The tracker's privacy page: what it holds, plus self-service download and erasure. */
 export const DATA_PAGE_URL = 'https://tracker.ct-builders.ai/privacy';
 
 /**
- * The data note under the consent box. Every claim in it is a property of the
+ * The data note under the consent label. Every claim in it is a property of the
  * tracker: it runs on GDPR terms, everything personal is stored in
  * europe-west1, and the data page downloads or erases a visitor's record on the
  * spot.
@@ -90,11 +94,13 @@ export const DATA_PAGE_URL = 'https://tracker.ct-builders.ai/privacy';
 export const DATA_NOTICE = 'GDPR compliant · stored in the EU · download or erase it any time';
 
 /**
- * The consent box's label. Identical on every surface and every site type: it
- * describes what the tracker records, which does not change with the site.
+ * The consent label, under the optional email field. Identical on every surface
+ * and every site type: it describes what the tracker records, which does not
+ * change with the site. It leads with what giving the email does, because
+ * typing it is the visitor's opt-in.
  */
 export const CONSENT_LABEL =
-  'Record my visit — my email, the pages I view and my browser — so the commercetools team can follow up.';
+  'Enter it to record your visit — your email, the pages you view and your browser — so the commercetools team can follow up. Leave it blank and nothing about you is stored.';
 
 export const DEMO_GATE_COPY: DemoGateCopy = {
   title: 'Demo access',
@@ -106,10 +112,8 @@ export const DEMO_GATE_COPY: DemoGateCopy = {
   dataNotice: DATA_NOTICE,
   dataLabel: 'Your data',
   dataUrl: DATA_PAGE_URL,
-  emailLabel: 'Your email address',
+  emailLabel: 'Your email address (optional)',
   emailPlaceholder: 'you@company.com',
-  emailHint:
-    "Any work email. There's no account to create — it tells the commercetools team who viewed the demo.",
   passwordLabel: 'Shared demo password',
   passwordHint:
     'Not one of your own passwords. Everyone with access uses the same one — ask whoever sent you the link.',
@@ -125,7 +129,7 @@ export const DEMO_GATE_COPY: DemoGateCopy = {
 // colleague, not by us. "Demo access" on that gate is the first thing they read
 // and it mis-frames the whole room, which is a curated response to their RFP
 // rather than a sandbox to click around in. Same structure, same whose-credential
-// hints and the same consent box; only the noun changes.
+// hints and the same consent label; only the noun changes.
 export const EVAL_ROOM_GATE_COPY: DemoGateCopy = {
   title: 'Evaluation room access',
   intro: 'This room was prepared for your team. Enter the access password you were given.',
@@ -136,10 +140,8 @@ export const EVAL_ROOM_GATE_COPY: DemoGateCopy = {
   dataNotice: DATA_NOTICE,
   dataLabel: 'Your data',
   dataUrl: DATA_PAGE_URL,
-  emailLabel: 'Your email address',
+  emailLabel: 'Your email address (optional)',
   emailPlaceholder: 'you@company.com',
-  emailHint:
-    "Any work email. There's no account to create — it tells the commercetools team who viewed the room.",
   passwordLabel: 'Shared access password',
   passwordHint:
     'Not one of your own passwords. Everyone with access uses the same one — ask whoever sent you the link.',
@@ -163,7 +165,7 @@ export function gateCopyForSiteType(siteType?: string | null): DemoGateCopy {
   return siteType === 'content' ? EVAL_ROOM_GATE_COPY : DEMO_GATE_COPY;
 }
 
-// What the consent box says is recorded, how that record is handled, and where
+// What the consent label says is recorded, how that record is handled, and where
 // the privacy policy and the data page live are not a demo's to reword: the
 // label is what the visitor agreed to, and the note is a compliance statement.
 const FIXED_KEYS: ReadonlySet<keyof DemoGateCopy> = new Set([

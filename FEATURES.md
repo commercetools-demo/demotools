@@ -171,19 +171,20 @@ demo consuming the package.
   `view_category`/`view_product` events.
 - `<DemoGate>` (`src/tracker/DemoGate.tsx`) + `DEMO_GATE_COPY` /
   `resolveGateCopy` (`src/tracker/gate-copy.ts`) — the app's own branded
-  shared-password gate UI with an unticked consent box (6.2.0): ticking it
-  reveals the email field and records the visit, leaving it unticked lets the
-  visitor in on the password alone with nothing recorded. The copy names the
-  password as shared ("ask whoever sent the link") and the email as the
-  visitor's own with no account behind it. Under the box a data note (6.3.0)
-  reads "GDPR compliant · stored in the EU · download or erase it any time"
-  and links the tracker's privacy page. Overridable per demo via a `copy` prop,
-  except the consent label, the data note and both links.
+  shared-password gate UI with an optional email field that is the opt-in
+  (6.4.0): typing an email records the visit, leaving it blank lets the visitor
+  in on the password alone with nothing recorded. The copy names the password
+  as shared ("ask whoever sent the link"), and the small print under the email
+  says what giving it records and that a blank field records nothing. Under
+  that a data note (6.3.0) reads "GDPR compliant · stored in the EU · download
+  or erase it any time" and links the tracker's privacy page. Overridable per
+  demo via a `copy` prop, except the consent label, the data note and both
+  links.
 - **Consent-aware tracking (6.2.0)** — `gateConsent()` reads the visitor's choice
   from the tracker's `/session`; `createGateRoute` sends the email and
-  `consent: true` only with the tick; the gated proxy forwards only a consenting
-  visitor and answers everyone else locally with a silent stand-in `t.js`;
-  `<TrackerScripts consent={false} />` renders nothing.
+  `consent: true` only when one was given; the gated proxy forwards only a
+  consenting visitor and answers everyone else locally with a silent stand-in
+  `t.js`; `<TrackerScripts consent={false} />` renders nothing.
 - **Two base wordings, keyed on site type (5.9.0)** — `EVAL_ROOM_GATE_COPY` /
   `gateCopyForSiteType(siteType)` (`src/tracker/gate-copy.ts`) pick "Evaluation
   room access" copy for `sites.site_type === 'content'` (evaluation rooms /

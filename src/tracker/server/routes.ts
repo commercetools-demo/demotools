@@ -56,8 +56,7 @@ function parseCookies(header: string | null): Record<string, string> {
   return out;
 }
 
-// What the gated proxy answers for a visitor who did not tick the gate's consent
-// box, without the request ever reaching the tracker. `t.js` is replaced by a
+// What the gated proxy answers for a visitor who gave the gate no email, without the request ever reaching the tracker. `t.js` is replaced by a
 // stub that installs a silent `window.dt.track`, so neither it nor the `track()`
 // shim sends anything; `/session` and `/event` answer as the tracker would for
 // a passed, non-consenting visitor. `no-store`, so the stub is never served
@@ -94,7 +93,7 @@ export interface TrackerProxyOptions {
    * a `dt_session` cookie (keeps it ITP-immune), so relayed Set-Cookie is
    * stripped on every path except `/auth`.
    *
-   * Only a visitor who ticked the gate's consent box is forwarded. For anyone
+   * Only a visitor who gave the gate an email is forwarded. For anyone
    * else — no cookie, or through the gate without consent — `t.js`, `/session`
    * and `/event` are answered here and nothing reaches the tracker, so no
    * page, browser or customer detail leaves the app.
@@ -354,14 +353,14 @@ export function createGateRoute(opts: GateRouteOptions): {
     const grant = String(form?.get('grant') ?? '');
     if (grant) return redeemGrant(req, grant);
 
-    // The consent box posts "on" when ticked and nothing at all when not. Only
-    // a tick sends the email; without one the tracker gets the password alone
-    // and records nothing, and the visitor still gets in.
-    const consent = String(form?.get('consent') ?? '') === 'on';
+    // The email field is the opt-in. An address sends the visit to be recorded
+    // with `consent: true`; a blank field sends the password alone, the tracker
+    // records nothing, and the visitor still gets in. A 6.2/6.3 gate page still
+    // open in a tab posts its email only with the box ticked, so it reads the
+    // same way.
+    const email = String(form?.get('email') ?? '').trim();
     const password = String(form?.get('password') ?? '');
-    const body = consent
-      ? { site, email: String(form?.get('email') ?? '').trim(), password, consent: true }
-      : { site, password };
+    const body = email ? { site, email, password, consent: true } : { site, password };
 
     try {
       const r = await fetch(`${getOrigin()}/auth`, {
