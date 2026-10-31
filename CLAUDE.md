@@ -257,6 +257,40 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
+### Consent — a visit is recorded only on a tick — 6.2.0
+
+Everything the tracker keeps about a visitor is personal data, so a visit is
+recorded only on the visitor's own opt-in: an unticked box on the gate. The rule,
+the label and the privacy link are specified in the presales plugin's
+`demo-tracker-site` skill, ***Personal data and consent***.
+
+- **`DemoGate`** renders the box unticked under the password, with
+  `CONSENT_LABEL` and a link to `PRIVACY_POLICY_URL`. The email field appears
+  only once the box is ticked, so it is posted only with the tick. An open site
+  has no password field, so its gate is the box and a Continue button: the
+  visitor gets in on the consent choice alone. `resolveGateCopy` ignores
+  overrides of `consentLabel` and `privacyUrl`, because the label is what the
+  visitor agreed to.
+- **`createGateRoute`** posts `{ site, password }` to the tracker's `/auth` without
+  the tick, and `{ site, email, password, consent: true }` with it. The tracker
+  writes nothing for the first and records the visit for the second; either way
+  it signs a `dt_session` whose `c` claim carries the choice, and that token is
+  the `demo_gate` cookie's value.
+- **`gateConsent(cookie)`** reads the choice from the tracker's `/session`
+  (`{ ok, consent }`), through the same 10-minute verdict cache as
+  `isGateOpen`. An answer without the flag reads as no consent.
+- **The gated proxy forwards only a consenting visitor.** For everyone else it
+  answers `t.js` with a silent stand-in (`window.dt.track` is a no-op and
+  `window.dt.consent = false`, `Cache-Control: no-store`), and `/session` and
+  `/event` as the tracker would, so no page, browser or customer detail leaves the
+  app. `track()` and `trackBeacon()` send nothing once `window.dt.consent` is
+  `false`.
+- **`<TrackerScripts consent={false} />`** leaves the script out of the page.
+  Without the prop the tag renders and the proxy decides, which is how every
+  demo gets the rule by bumping this package alone.
+
+`test/runtime/gate-consent.test.mjs` and `test/runtime/gate-copy.test.mjs` hold it.
+
 ### `withGate()` — the API surface is not under the gate — 5.13.0
 
 The app gate is enforced in `app/[locale]/layout.tsx`. `app/api/**` is not under

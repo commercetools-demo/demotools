@@ -27,4 +27,9 @@ export interface TrackerContext {
 export interface Dt {
   track?: (type: string, props?: TrackProps) => void;
   context?: TrackerContext;
+  /**
+   * `false` once the page knows the visitor left the gate's consent box
+   * unticked (the gated proxy's stand-in `t.js` sets it). Nothing is sent.
+   */
+  consent?: boolean;
 }

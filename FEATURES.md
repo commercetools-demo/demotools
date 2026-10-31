@@ -171,9 +171,17 @@ demo consuming the package.
   `view_category`/`view_product` events.
 - `<DemoGate>` (`src/tracker/DemoGate.tsx`) + `DEMO_GATE_COPY` /
   `resolveGateCopy` (`src/tracker/gate-copy.ts`) — the app's own branded
-  email + shared-password gate UI, with copy that explicitly distinguishes
-  "your email" (no account) from "the shared demo password" (ask whoever sent
-  the link), overridable per demo via a `copy` prop.
+  shared-password gate UI with an unticked consent box (6.2.0): ticking it
+  reveals the email field and records the visit, leaving it unticked lets the
+  visitor in on the password alone with nothing recorded. The copy names the
+  password as shared ("ask whoever sent the link") and the email as the
+  visitor's own with no account behind it; overridable per demo via a `copy`
+  prop, except the consent label and privacy link.
+- **Consent-aware tracking (6.2.0)** — `gateConsent()` reads the visitor's choice
+  from the tracker's `/session`; `createGateRoute` sends the email and
+  `consent: true` only with the tick; the gated proxy forwards only a consenting
+  visitor and answers everyone else locally with a silent stand-in `t.js`;
+  `<TrackerScripts consent={false} />` renders nothing.
 - **Two base wordings, keyed on site type (5.9.0)** — `EVAL_ROOM_GATE_COPY` /
   `gateCopyForSiteType(siteType)` (`src/tracker/gate-copy.ts`) pick "Evaluation
   room access" copy for `sites.site_type === 'content'` (evaluation rooms /

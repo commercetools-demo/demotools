@@ -17,9 +17,9 @@ export interface DemoGateProps {
   /** Where the gate sends the visitor once access is granted. */
   homePath: string;
   /**
-   * "Open" (email-only) site: collect a work email but no password. Determined
-   * server-side via `siteIsOpen()` and passed in by the /gate page. Defaults to
-   * a closed site (password required).
+   * "Open" site: no password. The visitor gets in on the consent choice alone.
+   * Determined server-side via `siteIsOpen()` and passed in by the /gate page.
+   * Defaults to a closed site (password required).
    */
   open?: boolean;
   /** POST target for the native form. Defaults to `/api/gate`. */
@@ -61,16 +61,21 @@ const LABEL_STYLE: React.CSSProperties = {
 };
 
 /**
- * Full-screen password gate rendered by the /gate route. Submits as a NATIVE
+ * Full-screen password gate rendered by the /gate route, with an unticked
+ * consent box. The visitor ticks it to have the visit recorded, and only then
+ * is the email field shown and sent; a visitor who leaves it unticked gets in
+ * on the password alone (on an open site, on nothing at all) and the tracker
+ * stores nothing about them. Nothing ticks the box but the visitor.
+ *
+ * Submits as a NATIVE
  * top-level form POST to `action` (NOT fetch) — a top-level navigation carries
  * a SameSite=Lax cookie even when initiated from another app (e.g. a tap in
  * Messages), whereas a fetch from a freshly cold-opened tab might not. The gate
  * route validates the credentials, sets the first-party gate cookie on a 303
  * redirect, and sends the visitor into the storefront.
  *
- * The two fields belong to two different parties and the copy has to say so —
- * the email is the visitor's own and buys them nothing but attribution, the
- * password is ours and is shared by everyone with the link. See
+ * The password is ours and is shared by everyone with the link; the email is
+ * the visitor's own and buys them nothing but attribution. See
  * [`gate-copy.ts`](./gate-copy.ts) for the wording and why.
  *
  * Rendered as a fixed full-screen overlay. Light theme by default; pass
@@ -105,10 +110,12 @@ export default function DemoGate({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
+  // Unticked until the visitor ticks it. Never defaulted, restored or inferred.
+  const [consent, setConsent] = useState(false);
 
   const emailValid = EMAIL_RE.test(email.trim());
-  const showEmailError = emailTouched && email.trim().length > 0 && !emailValid;
-  const canSubmit = emailValid && (open || password.length > 0);
+  const showEmailError = consent && emailTouched && email.trim().length > 0 && !emailValid;
+  const canSubmit = (open || password.length > 0) && (!consent || emailValid);
 
   useEffect(() => {
     // ITP insurance: if the gate cookie exists but a cross-app navigation
@@ -149,8 +156,9 @@ export default function DemoGate({
         action={action}
         onSubmit={(e) => {
           // Guard the native POST: block it (and reveal the inline hint) when
-          // the email is malformed or the password is empty. Valid submits fall
-          // through to the real top-level POST so the SameSite cookie still rides.
+          // the password is empty, or the box is ticked and the email malformed.
+          // Valid submits fall through to the real top-level POST so the
+          // SameSite cookie still rides.
           if (!canSubmit) {
             e.preventDefault();
             setEmailTouched(true);
@@ -174,37 +182,6 @@ export default function DemoGate({
         <p style={{ margin: 0, color: '#555', fontSize: 15, lineHeight: 1.5 }}>
           {open ? t.introOpen : t.intro}
         </p>
-        <label htmlFor="demo-gate-email" style={LABEL_STYLE}>
-          {t.emailLabel}
-        </label>
-        <input
-          id="demo-gate-email"
-          type="email"
-          name="email"
-          required
-          autoComplete="email"
-          inputMode="email"
-          placeholder={t.emailPlaceholder}
-          value={email}
-          aria-invalid={showEmailError}
-          aria-describedby="demo-gate-email-hint"
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => setEmailTouched(true)}
-          style={{
-            width: '100%',
-            padding: '12px 14px',
-            border: `2px solid ${showEmailError ? '#c0392b' : '#d0d0d8'}`,
-            borderRadius: 8,
-            fontSize: 16,
-            boxSizing: 'border-box',
-          }}
-        />
-        <div id="demo-gate-email-hint" style={HINT_STYLE}>
-          {t.emailHint}
-        </div>
-        <div style={{ color: '#c0392b', fontSize: 13, minHeight: '1.1em', marginTop: 4 }}>
-          {showEmailError ? t.emailInvalid : ''}
-        </div>
         {!open && (
           <>
             <label htmlFor="demo-gate-password" style={LABEL_STYLE}>
@@ -230,6 +207,76 @@ export default function DemoGate({
             />
             <div id="demo-gate-password-hint" style={HINT_STYLE}>
               {t.passwordHint}
+            </div>
+          </>
+        )}
+        <label
+          htmlFor="demo-gate-consent"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+            margin: '20px 0 0',
+            fontSize: 14,
+            lineHeight: 1.45,
+            color: '#333',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            id="demo-gate-consent"
+            type="checkbox"
+            name="consent"
+            value="on"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            style={{ marginTop: 3, width: 16, height: 16, flex: 'none', accentColor: accent }}
+          />
+          <span>
+            {t.consentLabel}{' '}
+            <a
+              href={t.privacyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: accent, textDecoration: 'underline' }}
+            >
+              {t.privacyLabel}
+            </a>
+          </span>
+        </label>
+        {consent && (
+          <>
+            <label htmlFor="demo-gate-email" style={LABEL_STYLE}>
+              {t.emailLabel}
+            </label>
+            <input
+              id="demo-gate-email"
+              type="email"
+              name="email"
+              required
+              autoFocus
+              autoComplete="email"
+              inputMode="email"
+              placeholder={t.emailPlaceholder}
+              value={email}
+              aria-invalid={showEmailError}
+              aria-describedby="demo-gate-email-hint"
+              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setEmailTouched(true)}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: `2px solid ${showEmailError ? '#c0392b' : '#d0d0d8'}`,
+                borderRadius: 8,
+                fontSize: 16,
+                boxSizing: 'border-box',
+              }}
+            />
+            <div id="demo-gate-email-hint" style={HINT_STYLE}>
+              {t.emailHint}
+            </div>
+            <div style={{ color: '#c0392b', fontSize: 13, minHeight: '1.1em', marginTop: 4 }}>
+              {showEmailError ? t.emailInvalid : ''}
             </div>
           </>
         )}

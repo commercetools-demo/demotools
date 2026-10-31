@@ -19,7 +19,7 @@
 //   export const dynamic = 'force-dynamic';
 
 import { GATE_COOKIE, JWT_RE, TRACKER_BASE_PATH, TRACKER_COOKIE, gateSlug, isGateEnabled, trackerOrigin } from '../config.js';
-import { isGateOpen } from './gate.js';
+import { gateConsent, isGateOpen } from './gate.js';
 
 // Handlers take the global `Request`, NOT a structural subset of it.
 //
@@ -56,6 +56,35 @@ function parseCookies(header: string | null): Record<string, string> {
   return out;
 }
 
+// What the gated proxy answers for a visitor who did not tick the gate's consent
+// box, without the request ever reaching the tracker. `t.js` is replaced by a
+// stub that installs a silent `window.dt.track`, so neither it nor the `track()`
+// shim sends anything; `/session` and `/event` answer as the tracker would for
+// a passed, non-consenting visitor. `no-store`, so the stub is never served
+// from cache to the same browser after the visitor does consent.
+const DECLINED_SCRIPT =
+  '(function(){var d=window.dt||{};window.dt=Object.assign({},d,{track:function(){},consent:false});})();';
+
+function declinedAnswer(path: string, passed: boolean): Response | null {
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+    });
+  if (path === 't.js') {
+    return new Response(DECLINED_SCRIPT, {
+      headers: {
+        'content-type': 'application/javascript; charset=utf-8',
+        'cache-control': 'no-store',
+      },
+    });
+  }
+  if (path === 'session' || path === 'event') {
+    return passed ? json(200, { ok: true, consent: false }) : json(401, { error: 'no session' });
+  }
+  return null;
+}
+
 export interface TrackerProxyOptions {
   /**
    * `'gated'` (default): the app runs its own password gate. Authenticate the
@@ -64,6 +93,11 @@ export interface TrackerProxyOptions {
    * tracker's cookie so `t.js`'s probe returns 200. The browser is never given
    * a `dt_session` cookie (keeps it ITP-immune), so relayed Set-Cookie is
    * stripped on every path except `/auth`.
+   *
+   * Only a visitor who ticked the gate's consent box is forwarded. For anyone
+   * else — no cookie, or through the gate without consent — `t.js`, `/session`
+   * and `/event` are answered here and nothing reaches the tracker, so no
+   * page, browser or customer detail leaves the app.
    *
    * `'track-only'`: no app gate. Forward the tracker's own anonymous
    * `dt_session` cookie and let its Set-Cookie through so the first-party
@@ -102,8 +136,13 @@ export function createTrackerProxyRoute(
     const cookies = parseCookies(req.headers.get('cookie'));
     if (mode === 'gated') {
       const gate = cookies[GATE_COOKIE];
-      if (gate && JWT_RE.test(gate)) headers.set('cookie', `${TRACKER_COOKIE}=${gate}`);
-      else headers.delete('cookie');
+      if (await gateConsent(gate)) {
+        headers.set('cookie', `${TRACKER_COOKIE}=${gate}`);
+      } else {
+        const local = declinedAnswer(upstreamPath.replace(/^\//, ''), await isGateOpen(gate));
+        if (local) return local;
+        headers.delete('cookie');
+      }
     } else {
       const dt = cookies[TRACKER_COOKIE];
       if (dt) headers.set('cookie', `${TRACKER_COOKIE}=${dt}`);
@@ -315,20 +354,27 @@ export function createGateRoute(opts: GateRouteOptions): {
     const grant = String(form?.get('grant') ?? '');
     if (grant) return redeemGrant(req, grant);
 
-    const email = String(form?.get('email') ?? '').trim();
+    // The consent box posts "on" when ticked and nothing at all when not. Only
+    // a tick sends the email; without one the tracker gets the password alone
+    // and records nothing, and the visitor still gets in.
+    const consent = String(form?.get('consent') ?? '') === 'on';
     const password = String(form?.get('password') ?? '');
+    const body = consent
+      ? { site, email: String(form?.get('email') ?? '').trim(), password, consent: true }
+      : { site, password };
 
     try {
       const r = await fetch(`${getOrigin()}/auth`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ site, email, password }),
+        body: JSON.stringify(body),
       });
       if (!r.ok) return redirectTo(errorPath);
-      // Store the tracker's dt_session JWT as the cookie VALUE: the gate checks
-      // only presence, but the proxy forwards this value to the tracker so
-      // t.js's probe authenticates. Fall back to '1' only if the tracker set no
-      // cookie (an abnormal path).
+      // Store the tracker's dt_session JWT as the cookie VALUE. It is verified
+      // against the tracker's /session, it carries the consent choice as a
+      // signed claim, and the proxy forwards it so a consenting visitor's t.js
+      // authenticates. Fall back to '1' only if the tracker set no cookie (an
+      // abnormal path, and one that opens nothing: '1' is not JWT-shaped).
       const token = (r.headers.get('set-cookie') ?? '').match(/dt_session=([^;]+)/)?.[1] ?? '1';
       return redirectTo(opts.homePath, token);
     } catch {

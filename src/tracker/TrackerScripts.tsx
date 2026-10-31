@@ -19,6 +19,15 @@ export interface TrackerScriptsProps {
   site?: string;
   /** First-party proxy mount path. Defaults to `/api/tracker`. */
   basePath?: string;
+  /**
+   * The visitor's consent choice, when the page knows it — e.g.
+   * `consent={await gateConsent((await cookies()).get(GATE_COOKIE)?.value)}`.
+   * `false` renders nothing, so the tracker's script is not on the page at all.
+   * Left undefined, the script tag renders and the gated proxy decides: a
+   * visitor who did not consent is served a silent stand-in and nothing
+   * reaches the tracker.
+   */
+  consent?: boolean;
 }
 
 /**
@@ -32,13 +41,16 @@ export interface TrackerScriptsProps {
  * derives its API base from `document.currentScript`, so every follow-up call
  * it makes stays first-party too.
  *
- * Renders nothing unless a slug is configured.
+ * Renders nothing unless a slug is configured, or when `consent` is `false`.
+ * The script only ever tracks a visitor who ticked the gate's consent box: the
+ * gated proxy serves everyone else a silent stand-in for `t.js`.
  */
 export default function TrackerScripts({
   context = {},
   gate = false,
   site,
   basePath = TRACKER_BASE_PATH,
+  consent,
 }: TrackerScriptsProps) {
   const slug = site ?? trackerSite();
   // Slug only. This used to ALSO require NEXT_PUBLIC_DEMO_TRACKER_URL, which is
@@ -55,7 +67,7 @@ export default function TrackerScripts({
   // bridge-provider (2026-08-20): real customer visitors had authenticated
   // through the gate on 2026-07-30 (session rows exist, attributed to
   // @mckesson.com addresses) and not one event was ever recorded.
-  if (!slug) return null;
+  if (!slug || consent === false) return null;
   return (
     <>
       <script
