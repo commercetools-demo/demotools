@@ -40,7 +40,7 @@ export const gateSlug = trackerSite;
 
 /** Tracker origin used by the first-party proxy, server-side `/auth`, and `/site-info`. */
 export function trackerOrigin(): string {
-  return process.env.NEXT_PUBLIC_DEMO_TRACKER_URL || 'https://tracker.ctdemo.net';
+  return process.env.NEXT_PUBLIC_DEMO_TRACKER_URL || 'https://tracker.ct-builders.ai';
 }
 
 /**

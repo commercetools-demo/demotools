@@ -431,7 +431,7 @@ site ungated, so check the call site when bumping.
 
 `TrackerScripts` used to require **both** a slug and
 `NEXT_PUBLIC_DEMO_TRACKER_URL`. That second variable is documented as optional
-right here (`trackerOrigin()` defaults it to `https://tracker.ctdemo.net`) and
+right here (`trackerOrigin()` defaults it to `https://tracker.ct-builders.ai`) and
 the component never uses it: the script loads from the first-party proxy path,
 and `t.js` derives its API base from `document.currentScript`, so the tracker
 origin never reaches the client at all.
@@ -714,7 +714,7 @@ derive it from `Request` (`new URL(request.url).origin` rather than
 `request.nextUrl.origin`).
 
 Env: `NEXT_PUBLIC_DEMO_TRACKER_SITE` (slug — drives gate + script) and optional
-`NEXT_PUBLIC_DEMO_TRACKER_URL` (defaults to `https://tracker.ctdemo.net`). The
+`NEXT_PUBLIC_DEMO_TRACKER_URL` (defaults to `https://tracker.ct-builders.ai`). The
 gate is inert unless `NODE_ENV === 'production'` AND a slug is set. Fire
 semantic events with `track(event, props)`; use `<TrackEvent>` from Server
 Components; use `trackBeacon()` before a hard navigation (e.g. one-click login).

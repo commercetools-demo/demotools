@@ -79,7 +79,7 @@ export interface DemoGateCopy {
 export const PRIVACY_POLICY_URL = 'https://commercetools.com/privacy';
 
 /** The tracker's privacy page: what it holds, plus self-service download and erasure. */
-export const DATA_PAGE_URL = 'https://tracker.ctdemo.net/privacy';
+export const DATA_PAGE_URL = 'https://tracker.ct-builders.ai/privacy';
 
 /**
  * The data note under the consent box. Every claim in it is a property of the

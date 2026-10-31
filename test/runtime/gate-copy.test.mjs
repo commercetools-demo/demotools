@@ -98,7 +98,7 @@ test('no demo can reword the consent label or move the privacy link', () => {
 test('no demo can reword the data note or move the data-page link', () => {
   const copy = resolveGateCopy({ dataNotice: 'We keep it forever', dataUrl: 'https://example.com', dataLabel: 'Ihre Daten' });
   assert.equal(copy.dataNotice, DATA_NOTE);
-  assert.equal(copy.dataUrl, 'https://tracker.ctdemo.net/privacy');
+  assert.equal(copy.dataUrl, 'https://tracker.ct-builders.ai/privacy');
   assert.equal(copy.dataLabel, 'Ihre Daten');
   assert.equal(EVAL_ROOM_GATE_COPY.dataNotice, DATA_NOTE);
   for (const html of [render({ open: true }), render({ siteType: 'content' })]) {
@@ -155,7 +155,7 @@ test('site_type picks the base copy; only `content` is an evaluation room', () =
 const visibleText = (html) => html.replace(/<[^>]*>/g, ' ');
 
 test('the evaluation-room gate never says "demo"', () => {
-  // Link targets are not read: the tracker's own host is ctdemo.net.
+  // Link targets are not visible copy, so they are not read.
   for (const [k, v] of Object.entries(EVAL_ROOM_GATE_COPY)) {
     if (k.endsWith('Url')) continue;
     assert.doesNotMatch(v, /demo/i);
