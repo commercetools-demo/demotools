@@ -42,7 +42,7 @@ export interface TrackerScriptsProps {
  * it makes stays first-party too.
  *
  * Renders nothing unless a slug is configured, or when `consent` is `false`.
- * The script only ever tracks a visitor who ticked the gate's consent box: the
+ * The script only ever tracks a visitor who gave the gate an email: the
  * gated proxy serves everyone else a silent stand-in for `t.js`.
  */
 export default function TrackerScripts({

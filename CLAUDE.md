@@ -257,27 +257,33 @@ selected by the proxy `mode`:
 - **Track-only** (b2b2c/b2b2b customer): no app gate; the proxy forwards the
   tracker's own anonymous `dt_session` and lets its `Set-Cookie` through.
 
-### Consent — a visit is recorded only on a tick — 6.2.0
+### Consent — the email field is the opt-in — 6.4.0
 
 Everything the tracker keeps about a visitor is personal data, so a visit is
-recorded only on the visitor's own opt-in: an unticked box on the gate. The rule,
-the label and the privacy link are specified in the presales plugin's
-`demo-tracker-site` skill, ***Personal data and consent***.
+recorded only on the visitor's own opt-in: typing an email into the gate's
+optional email field. The rule, the label and the privacy link are specified in
+the presales plugin's `demo-tracker-site` skill, ***Personal data and consent***.
 
-- **`DemoGate`** renders the box unticked under the password, with
-  `CONSENT_LABEL` and a link to `PRIVACY_POLICY_URL`. Under it sits
-  `DATA_NOTICE` ("GDPR compliant · stored in the EU · download or erase it any
-  time") with a "Your data" link to `DATA_PAGE_URL`, the tracker's privacy page,
-  where a visitor downloads or erases their record. The checkbox points at the
-  note through `aria-describedby`. The email field appears
-  only once the box is ticked, so it is posted only with the tick. An open site
-  has no password field, so its gate is the box and a Continue button: the
-  visitor gets in on the consent choice alone. `resolveGateCopy` ignores
-  overrides of `consentLabel`, `privacyUrl`, `dataNotice` and `dataUrl`, because
-  the label is what the visitor agreed to and the note is a compliance
-  statement. The two link texts can be translated.
-- **`createGateRoute`** posts `{ site, password }` to the tracker's `/auth` without
-  the tick, and `{ site, email, password, consent: true }` with it. The tracker
+- **`DemoGate`** renders the email field under the password, empty and labelled
+  "Your email address (optional)". Under it sit `CONSENT_LABEL` ("Enter it to
+  record your visit — … Leave it blank and nothing about you is stored.") with a
+  link to `PRIVACY_POLICY_URL`, then `DATA_NOTICE` ("GDPR compliant · stored in
+  the EU · download or erase it any time") with a "Your data" link to
+  `DATA_PAGE_URL`, the tracker's privacy page, where a visitor downloads or
+  erases their record. The field points at both through `aria-describedby`.
+  A blank field is a valid answer; a typed one must be a real address before
+  Continue enables. An open site has no password field, so its gate is the
+  optional email and a Continue button. Typing the address is the affirmative
+  act, so the field is the only control the opt-in needs. `resolveGateCopy` ignores overrides of
+  `consentLabel`, `privacyUrl`, `dataNotice` and `dataUrl`, because the label is
+  what the visitor agreed to and the note is a compliance statement. The two
+  link texts can be translated. `emailHint` is no longer rendered and stays in
+  `DemoGateCopy` as an optional, deprecated key so existing overrides still
+  type-check.
+- **`createGateRoute`** posts `{ site, password }` to the tracker's `/auth` for a
+  blank email, and `{ site, email, password, consent: true }` for a filled one.
+  A 6.2/6.3 gate page still open in a tab posts its email only with the box
+  ticked, so the same rule reads it. The tracker
   writes nothing for the first and records the visit for the second; either way
   it signs a `dt_session` whose `c` claim carries the choice, and that token is
   the `demo_gate` cookie's value.

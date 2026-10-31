@@ -57,7 +57,7 @@ const VERIFY_CACHE_MAX = 500;
 
 interface VerifyEntry {
   ok: boolean;
-  /** The visitor ticked the gate's consent box. Only meaningful when `ok`. */
+  /** The visitor gave the gate an email. Only meaningful when `ok`. */
   consent: boolean;
   at: number;
 }
@@ -155,10 +155,10 @@ export async function isGateOpen(gateCookieValue: string | undefined): Promise<b
 }
 
 /**
- * Whether the visitor holding this gate cookie ticked the gate's consent box,
- * so their visit may be recorded. False for no cookie, an unverifiable one, a
- * visitor who left the box unticked, and wherever the gate is off — with no
- * gate there is no box, and no one has consented.
+ * Whether the visitor holding this gate cookie gave the gate an email, so their
+ * visit may be recorded. False for no cookie, an unverifiable one, a visitor
+ * who left the email blank, and wherever the gate is off — with no gate there
+ * is no email field, and no one has consented.
  *
  * The tracker proxy asks this before forwarding anything, and a demo can pass
  * it to `<TrackerScripts consent={…} />` to leave the tracker's script out of
