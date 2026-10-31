@@ -265,9 +265,10 @@ optional email field. The rule, the label and the privacy link are specified in
 the presales plugin's `demo-tracker-site` skill, ***Personal data and consent***.
 
 - **`DemoGate`** renders the email field under the password, empty and labelled
-  "Your email address (optional)". Under it sit `CONSENT_LABEL` ("Enter it to
-  record your visit — … Leave it blank and nothing about you is stored.") with a
-  link to `PRIVACY_POLICY_URL`, then `DATA_NOTICE` ("GDPR compliant · stored in
+  "Your email, for follow-up (optional)". Under it sits `CONSENT_LABEL` ("Add it
+  to get answers from the commercetools team on the parts you explore. Adding it
+  records your visit: …"), which gives the reason to type an address before it
+  states what typing one records, with a link to `PRIVACY_POLICY_URL`, then `DATA_NOTICE` ("GDPR compliant · stored in
   the EU · download or erase it any time") with a "Your data" link to
   `DATA_PAGE_URL`, the tracker's privacy page, where a visitor downloads or
   erases their record. The field points at both through `aria-describedby`.

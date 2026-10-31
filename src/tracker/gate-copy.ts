@@ -8,8 +8,8 @@
 // is the optional email and a Continue button.
 //
 // So the password carries a hint that names whose credential it is, the email
-// field's small print says exactly what giving it records and why and links the
-// privacy policy, a data note under that says where the record is kept and links
+// field's label and small print say what the visitor gets for giving it and
+// exactly what giving it records, and link the privacy policy, a data note under that says where the record is kept and links
 // the page where a visitor downloads or erases it, and the failure message says
 // which field was wrong.
 //
@@ -43,8 +43,8 @@ export interface DemoGateCopy {
   /** Sub-heading on an open (email-only) site. */
   introOpen: string;
   /**
-   * The email field's small print: what giving an email records and why, and
-   * that a blank field records nothing. Followed by the privacy-policy link.
+   * The email field's small print: what the visitor gets for giving an email,
+   * and what giving it records. Followed by the privacy-policy link.
    */
   consentLabel: string;
   /** Text of the privacy-policy link after the consent label. */
@@ -96,11 +96,12 @@ export const DATA_NOTICE = 'GDPR compliant · stored in the EU · download or er
 /**
  * The consent label, under the optional email field. Identical on every surface
  * and every site type: it describes what the tracker records, which does not
- * change with the site. It leads with what giving the email does, because
- * typing it is the visitor's opt-in.
+ * change with the site. It leads with what the visitor gets for typing an
+ * address, then states exactly what typing it records, because typing it is the
+ * visitor's opt-in. The field's "(optional)" already says a blank is fine.
  */
 export const CONSENT_LABEL =
-  'Enter it to record your visit — your email, the pages you view and your browser — so the commercetools team can follow up. Leave it blank and nothing about you is stored.';
+  'Add it to get answers from the commercetools team on the parts you explore. Adding it records your visit: your email, the pages you view and your browser.';
 
 export const DEMO_GATE_COPY: DemoGateCopy = {
   title: 'Demo access',
@@ -112,7 +113,7 @@ export const DEMO_GATE_COPY: DemoGateCopy = {
   dataNotice: DATA_NOTICE,
   dataLabel: 'Your data',
   dataUrl: DATA_PAGE_URL,
-  emailLabel: 'Your email address (optional)',
+  emailLabel: 'Your email, for follow-up (optional)',
   emailPlaceholder: 'you@company.com',
   passwordLabel: 'Shared demo password',
   passwordHint:
@@ -140,7 +141,7 @@ export const EVAL_ROOM_GATE_COPY: DemoGateCopy = {
   dataNotice: DATA_NOTICE,
   dataLabel: 'Your data',
   dataUrl: DATA_PAGE_URL,
-  emailLabel: 'Your email address (optional)',
+  emailLabel: 'Your email, for follow-up (optional)',
   emailPlaceholder: 'you@company.com',
   passwordLabel: 'Shared access password',
   passwordHint:
