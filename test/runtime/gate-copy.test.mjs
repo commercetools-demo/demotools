@@ -1,15 +1,16 @@
 // Runtime tests for the access-gate copy.
 //
-// The gate's whole job is to stop a visitor reading it as an ordinary account
-// login: the email is theirs (attribution only, no account exists) and the
-// password is ours (shared by everyone with the link). That distinction lives
-// only in strings, so it can't be type-checked — these tests pin the parts that
-// are load-bearing for comprehension:
+// The gate asks for a password that is ours (shared by everyone with the link)
+// and offers an unticked consent box; the email is theirs, asked for only once
+// they tick it, and buys them nothing but attribution. That lives only in
+// strings and markup, so it can't be type-checked — these tests pin the parts
+// that are load-bearing:
 //
-//   1. Both fields say WHOSE credential they are, on the closed-site render.
-//   2. The open-site render says no password is needed and renders no password
-//      input at all (asking for a password that doesn't exist is the same
-//      confusion in reverse).
+//   1. The password says WHOSE credential it is, the box is there and unticked
+//      with the agreed label and the privacy link, and no email field renders
+//      until the box is ticked.
+//   2. The open-site render renders no password input at all, and can be
+//      submitted as it stands — the visitor gets in on the consent choice.
 //   3. The failure message on a closed site blames the shared password, not the
 //      visitor's email — only the password can actually be wrong there.
 //   4. The word "username" appears nowhere: there is no username, and that
@@ -17,7 +18,8 @@
 //   5. Per-demo overrides still work, and the legacy `title` prop still wins.
 //   6. An evaluation room never calls itself a demo — a prospect opening their
 //      own RFP response should not be told it is a demo — while keeping the
-//      two-credential explanation, which is what (1)-(4) are actually about.
+//      whose-credential hint and the consent box, which (1)-(4) are about.
+//   7. No demo can reword the consent label or move the privacy link.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,22 +37,59 @@ import {
 const render = (props) =>
   renderToStaticMarkup(React.createElement(DemoGate, { homePath: '/en-us', ...props }));
 
-test('closed gate names whose email and whose password each field wants', () => {
+const CONSENT =
+  'Record my visit — my email, the pages I view and my browser — so the commercetools team can follow up.';
+
+/** The consent checkbox's own tag. */
+const checkbox = (html) => html.match(/<input[^>]*type="checkbox"[^>]*>/)?.[0] ?? '';
+
+test('closed gate: whose password, an unticked consent box, no email until ticked', () => {
   const html = render();
-  assert.match(html, /Your email address/);
   assert.match(html, /Shared demo password/);
-  // The email hint has to kill "which account do I use?" outright.
-  assert.match(html, /no account to create/i);
   // The password hint has to kill "my password doesn't work".
   assert.match(html, /Everyone with access uses the same one/i);
   assert.match(html, /type="password"/);
+
+  const box = checkbox(html);
+  assert.match(box, /name="consent"/);
+  assert.match(box, /value="on"/);
+  assert.doesNotMatch(box, /checked/, 'the box is never ticked for the visitor');
+  assert.ok(html.includes(CONSENT), 'the consent label is the agreed wording');
+  assert.match(html, /href="https:\/\/commercetools\.com\/privacy"/);
+  assert.match(html, />Privacy policy</);
+
+  // No email field — and so no email in the form post — without the tick.
+  assert.doesNotMatch(html, /type="email"/);
+  assert.doesNotMatch(html, /name="email"/);
 });
 
-test('open gate says no password is needed and renders no password field', () => {
+test('the email hint says there is no account behind the address', () => {
+  // Shown once the box is ticked; it has to kill "which account do I use?".
+  assert.match(DEMO_GATE_COPY.emailHint, /no account to create/i);
+  assert.match(EVAL_ROOM_GATE_COPY.emailHint, /no account to create/i);
+});
+
+test('open gate renders no password field and can be submitted untouched', () => {
   const html = render({ open: true });
-  assert.match(html, /no password required/i);
+  assert.match(html, /open to anyone with the link/i);
   assert.doesNotMatch(html, /type="password"/);
   assert.doesNotMatch(html, /Shared demo password/);
+  assert.doesNotMatch(checkbox(html), /checked/);
+  const button = html.match(/<button[^>]*>/)[0];
+  assert.doesNotMatch(button, /disabled/, 'an open site lets the visitor in on the consent choice alone');
+});
+
+test('closed gate cannot be submitted without the password', () => {
+  assert.match(render().match(/<button[^>]*>/)[0], /disabled/);
+});
+
+test('no demo can reword the consent label or move the privacy link', () => {
+  const copy = resolveGateCopy({ consentLabel: 'Track me', privacyUrl: 'https://example.com', privacyLabel: 'Datenschutz' });
+  assert.equal(copy.consentLabel, CONSENT);
+  assert.equal(copy.privacyUrl, 'https://commercetools.com/privacy');
+  // The link text is only a label, so it can be translated.
+  assert.equal(copy.privacyLabel, 'Datenschutz');
+  assert.equal(EVAL_ROOM_GATE_COPY.consentLabel, CONSENT);
 });
 
 test('no gate surface ever says "username"', () => {
@@ -121,18 +160,19 @@ test('the demo gate still says "demo" — the variant did not become the default
   assert.match(visibleText(render({ siteType: 'commerce' })), /demo/i);
 });
 
-test('the evaluation-room gate keeps both whose-credential hints', () => {
+test('the evaluation-room gate keeps the whose-credential hint and the box', () => {
   const html = render({ siteType: 'content' });
   assert.match(html, /Evaluation room access/);
   assert.match(html, /Shared access password/);
-  assert.match(html, /no account to create/i);
   assert.match(html, /Everyone with access uses the same one/i);
   assert.match(html, /type="password"/);
+  assert.ok(html.includes(CONSENT));
+  assert.doesNotMatch(checkbox(html), /checked/);
 });
 
 test('an open evaluation room asks for no password', () => {
   const html = render({ siteType: 'content', open: true });
-  assert.match(html, /no password required/i);
+  assert.match(html, /open to anyone with the link/i);
   assert.doesNotMatch(html, /type="password"/);
   assert.doesNotMatch(html, /Shared access password/);
 });

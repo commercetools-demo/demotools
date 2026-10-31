@@ -92,6 +92,8 @@ function postDirect(event: string, props?: TrackProps): boolean {
  */
 export function track(event: string, props?: TrackProps): void {
   if (typeof window === 'undefined') return;
+  // The visitor did not consent: the proxy's stub t.js says so. Send nothing.
+  if (dt()?.consent === false) return;
   try {
     const viaScript = dtTrack();
     if (viaScript) {
@@ -124,6 +126,7 @@ export function trackBeacon(
   opts?: { site?: string; basePath?: string },
 ): void {
   if (typeof window === 'undefined') return;
+  if (dt()?.consent === false) return;
   try {
     const site = opts?.site ?? trackerSite();
     const basePath = opts?.basePath ?? TRACKER_BASE_PATH;

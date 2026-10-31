@@ -57,16 +57,26 @@ const VERIFY_CACHE_MAX = 500;
 
 interface VerifyEntry {
   ok: boolean;
+  /** The visitor ticked the gate's consent box. Only meaningful when `ok`. */
+  consent: boolean;
   at: number;
 }
 
+/** What the tracker's `/session` says about a gate cookie. */
+interface SessionVerdict {
+  ok: boolean;
+  consent: boolean;
+}
+
+const REFUSED: SessionVerdict = { ok: false, consent: false };
+
 const verifyCache = new Map<string, VerifyEntry>();
 
-function rememberVerdict(key: string, ok: boolean): void {
+function rememberVerdict(key: string, verdict: SessionVerdict): void {
   // Re-insert to move the key to the end, so the eviction below is LRU rather
   // than insertion-order.
   verifyCache.delete(key);
-  verifyCache.set(key, { ok, at: Date.now() });
+  verifyCache.set(key, { ok: verdict.ok, consent: verdict.consent, at: Date.now() });
   while (verifyCache.size > VERIFY_CACHE_MAX) {
     const oldest = verifyCache.keys().next().value;
     if (oldest === undefined) break;
@@ -80,8 +90,11 @@ export function resetGateVerifyCache(): void {
 }
 
 /**
- * Whether `token` is a live tracker session for THIS site, asked of the
- * tracker's `/session` and cached per lambda.
+ * Whether `token` is a live tracker session for THIS site, and whether its
+ * visitor consented to being recorded — asked of the tracker's `/session` and
+ * cached per lambda. The consent choice is a claim inside the signed token, so
+ * the tracker is the only party that can read it; an answer without it (a
+ * tracker older than the consent flag) reads as no consent.
  *
  * The site check is the load-bearing half: `/session` answers 401 when the
  * session's claims name a different slug, so a real token minted on demo A
@@ -93,15 +106,18 @@ export function resetGateVerifyCache(): void {
  * everyone else is refused. Refusing a stranger during an outage costs them
  * nothing they could have had anyway — `/auth` lives on the same tracker.
  */
-async function sessionIsValid(token: string): Promise<boolean> {
+async function verifySession(token: string): Promise<SessionVerdict> {
   const site = gateSlug();
-  if (!site) return false;
+  if (!site) return REFUSED;
 
   const key = `${site}\u0000${token}`;
   const hit = verifyCache.get(key);
   const now = Date.now();
-  if (hit && now - hit.at < (hit.ok ? VERIFY_TTL_OK_MS : VERIFY_TTL_BAD_MS)) return hit.ok;
-  const staleOk = !!hit && hit.ok && now - hit.at < VERIFY_STALE_MAX_MS;
+  if (hit && now - hit.at < (hit.ok ? VERIFY_TTL_OK_MS : VERIFY_TTL_BAD_MS)) {
+    return { ok: hit.ok, consent: hit.consent };
+  }
+  const stale: SessionVerdict =
+    hit && hit.ok && now - hit.at < VERIFY_STALE_MAX_MS ? { ok: true, consent: hit.consent } : REFUSED;
 
   try {
     const r = await fetch(`${trackerOrigin()}/session?site=${encodeURIComponent(site)}`, {
@@ -109,14 +125,16 @@ async function sessionIsValid(token: string): Promise<boolean> {
       cache: 'no-store',
     });
     if (r.status === 200) {
-      rememberVerdict(key, true);
-      return true;
+      const body = (await r.json().catch(() => null)) as { consent?: unknown } | null;
+      const verdict = { ok: true, consent: body?.consent === true };
+      rememberVerdict(key, verdict);
+      return verdict;
     }
-    if (r.status >= 500) return staleOk;
-    rememberVerdict(key, false);
-    return false;
+    if (r.status >= 500) return stale;
+    rememberVerdict(key, REFUSED);
+    return REFUSED;
   } catch {
-    return staleOk;
+    return stale;
   }
 }
 
@@ -133,7 +151,24 @@ async function sessionIsValid(token: string): Promise<boolean> {
 export async function isGateOpen(gateCookieValue: string | undefined): Promise<boolean> {
   if (!isGateEnabled()) return true;
   if (!gateCookieValue || !JWT_RE.test(gateCookieValue)) return false;
-  return sessionIsValid(gateCookieValue);
+  return (await verifySession(gateCookieValue)).ok;
+}
+
+/**
+ * Whether the visitor holding this gate cookie ticked the gate's consent box,
+ * so their visit may be recorded. False for no cookie, an unverifiable one, a
+ * visitor who left the box unticked, and wherever the gate is off — with no
+ * gate there is no box, and no one has consented.
+ *
+ * The tracker proxy asks this before forwarding anything, and a demo can pass
+ * it to `<TrackerScripts consent={…} />` to leave the tracker's script out of
+ * the page altogether.
+ */
+export async function gateConsent(gateCookieValue: string | undefined): Promise<boolean> {
+  if (!isGateEnabled()) return false;
+  if (!gateCookieValue || !JWT_RE.test(gateCookieValue)) return false;
+  const v = await verifySession(gateCookieValue);
+  return v.ok && v.consent;
 }
 
 /**

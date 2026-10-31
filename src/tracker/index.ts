@@ -6,6 +6,8 @@ export { track, trackBeacon } from './track.js';
 export { default as TrackEvent } from './TrackEvent.js';
 export { default as DemoGate, type DemoGateProps } from './DemoGate.js';
 export {
+  CONSENT_LABEL,
+  PRIVACY_POLICY_URL,
   DEMO_GATE_COPY,
   EVAL_ROOM_GATE_COPY,
   gateCopyForSiteType,

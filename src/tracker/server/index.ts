@@ -12,6 +12,7 @@ export {
 
 export {
   isGateOpen,
+  gateConsent,
   gateVerdict,
   resetGateVerifyCache,
   type GateVerdict,
