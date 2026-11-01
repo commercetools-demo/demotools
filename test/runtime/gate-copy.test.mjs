@@ -40,7 +40,7 @@ const render = (props) =>
   renderToStaticMarkup(React.createElement(DemoGate, { homePath: '/en-us', ...props }));
 
 const CONSENT =
-  'Enter it to record your visit — your email, the pages you view and your browser — so the commercetools team can follow up. Leave it blank and nothing about you is stored.';
+  'Add it to get answers from the commercetools team on the parts you explore. Adding it records your visit: your email, the pages you view and your browser.';
 const DATA_NOTE = 'GDPR compliant · stored in the EU · download or erase it any time';
 
 /** The email field's own tag. */
@@ -53,7 +53,7 @@ function assertEmailIsTheOptIn(html) {
   assert.doesNotMatch(input, /required/, 'a blank email is a valid answer');
   assert.doesNotMatch(input, /value="[^"]/, 'the field starts empty');
   assert.doesNotMatch(html, /type="checkbox"/, 'the email field is the only opt-in');
-  assert.match(html, /Your email address \(optional\)/);
+  assert.match(html, /Your email, for follow-up \(optional\)/);
   assert.ok(html.includes(CONSENT), 'the consent label is the agreed wording');
   assert.match(html, /href="https:\/\/commercetools\.com\/privacy"/);
   assert.match(html, />Privacy policy</);
@@ -70,9 +70,12 @@ test('closed gate: whose password, then an optional email with the consent label
   assert.match(emailInput(html), /aria-describedby="demo-gate-consent demo-gate-data-note"/);
 });
 
-test('the consent label says what giving the email records, and what a blank one does', () => {
-  assert.match(CONSENT, /^Enter it to record your visit/);
-  assert.match(CONSENT, /Leave it blank and nothing about you is stored\.$/);
+test('the consent label gives a reason to add the email, then says exactly what it records', () => {
+  assert.match(CONSENT, /^Add it to get answers from the commercetools team/);
+  assert.match(CONSENT, /records your visit: your email, the pages you view and your browser\.$/);
+  // "(optional)" on the field already says a blank is fine; the label is the
+  // reason to fill it in, not an invitation to skip it.
+  assert.doesNotMatch(CONSENT, /leave it blank/i);
 });
 
 test('open gate renders no password field and can be submitted untouched', () => {
