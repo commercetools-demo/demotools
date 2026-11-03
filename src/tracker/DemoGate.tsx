@@ -110,6 +110,7 @@ export default function DemoGate({
   // rather than only a generic error after a full-page POST round-trip.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
 
   // Blank is a valid answer — it means "don't record me". Anything typed has to
@@ -186,27 +187,57 @@ export default function DemoGate({
         </p>
         {!open && (
           <>
-            <label htmlFor="demo-gate-password" style={LABEL_STYLE}>
+            <label id="demo-gate-password-label" htmlFor="demo-gate-password" style={LABEL_STYLE}>
               {t.passwordLabel}
             </label>
-            <input
-              id="demo-gate-password"
-              type="password"
-              name="password"
-              required
-              autoComplete="current-password"
-              aria-describedby="demo-gate-password-hint"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                border: '2px solid #d0d0d8',
-                borderRadius: 8,
-                fontSize: 16,
-                boxSizing: 'border-box',
-              }}
-            />
+            {/* The password is typed from a message, not from memory, so the
+                visitor can reveal it to check it against what they were sent. */}
+            <div style={{ position: 'relative' }}>
+              <input
+                id="demo-gate-password"
+                type={passwordVisible ? 'text' : 'password'}
+                name="password"
+                required
+                autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-describedby="demo-gate-password-hint"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 72px 12px 14px',
+                  border: '2px solid #d0d0d8',
+                  borderRadius: 8,
+                  fontSize: 16,
+                  boxSizing: 'border-box',
+                }}
+              />
+              <button
+                id="demo-gate-password-toggle"
+                type="button"
+                aria-controls="demo-gate-password"
+                aria-labelledby="demo-gate-password-toggle demo-gate-password-label"
+                onClick={() => setPasswordVisible((v) => !v)}
+                style={{
+                  position: 'absolute',
+                  right: 6,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  padding: '6px 10px',
+                  background: 'transparent',
+                  border: 0,
+                  borderRadius: 6,
+                  color: accent,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {passwordVisible ? t.passwordHide : t.passwordShow}
+              </button>
+            </div>
             <div id="demo-gate-password-hint" style={HINT_STYLE}>
               {t.passwordHint}
             </div>

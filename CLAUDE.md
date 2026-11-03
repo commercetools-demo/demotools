@@ -481,6 +481,12 @@ says whose credential it is:
   this just tells us who's viewing the demo."*
 - **"Shared demo password"** — *"Not one of your own passwords. Everyone with
   access uses the same one — ask whoever sent you the link."*
+- **Show / Hide** (`passwordShow` / `passwordHide`, 6.5.0) — a button inside the
+  password field reveals what was typed, so a visitor copying the password out
+  of a message checks it before submitting. It is `type="button"`, so it never
+  posts the form. The field has autocapitalise, autocorrect and spellcheck off,
+  because revealed as text on iOS it would otherwise capitalise or "correct"
+  the password as it is typed.
 - The failed-submit message blames the **password** on a closed site (the only
   thing that can actually be wrong there) instead of "Invalid email or
   password", and an open site gets a separate message about the email.
