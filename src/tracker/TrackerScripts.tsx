@@ -9,10 +9,9 @@ export interface TrackerScriptsProps {
    */
   context?: TrackerContext;
   /**
-   * `window.dt.gate`. Leave `false` (default) when the app runs its OWN branded
-   * gate (via createGateRoute) so `t.js` never renders a second "Demo access"
-   * overlay — it loads on every page purely for analytics and stays silent until
-   * the proxy authenticates it. Set `true` only if you want the tracker's own gate.
+   * `window.dt.gate`. Not read: `t.js` is analytics only and never renders a
+   * gate, so the app's own `DemoGate` is the gate whatever this says.
+   * @deprecated Accepted so existing callers still type-check.
    */
   gate?: boolean;
   /** Tracker slug. Defaults to `NEXT_PUBLIC_DEMO_TRACKER_SITE`. */
