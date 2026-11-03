@@ -194,9 +194,9 @@ demo consuming the package.
   on top. `gate-copy.ts` is published as its own React-free, dependency-free
   `@ct-demos/demotools/tracker/gate-copy` subpath (distinct from the `./tracker`
   barrel that re-exports `DemoGate`) specifically so the demo-tracker service's
-  Netlify edge-gate template and `t.js` in-page overlay — neither a React app —
-  can import the exact same copy instead of hand-mirroring three copies that
-  drift. Neither surface calls an evaluation room a "demo".
+  Netlify edge-gate template — not a React app — can import the exact same
+  copy instead of hand-mirroring it. Neither surface calls an evaluation room
+  a "demo". `t.js` is analytics only and renders no gate.
 - Two integration modes via `createTrackerProxyRoute({ mode })`: **gated**
   (b2c/b2b — app renders its own `/gate`, authenticates the tracker
   server-side from a `demo_gate` cookie, never exposes `dt_session` to the

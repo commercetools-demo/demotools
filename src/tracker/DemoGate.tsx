@@ -30,8 +30,8 @@ export interface DemoGateProps {
   /**
    * Which base wording to start from. `content` gets the evaluation-room set
    * ("Evaluation room access"), anything else gets the demo set. Pass the
-   * tracker's `sites.site_type` straight through; the edge and `t.js` gates
-   * select the same way, so all three surfaces agree.
+   * tracker's `sites.site_type` straight through; the edge gate selects the
+   * same way, so both gates agree.
    */
   siteType?: GateSiteType;
   /**

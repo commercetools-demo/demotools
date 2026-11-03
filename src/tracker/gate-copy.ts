@@ -15,26 +15,24 @@
 //
 // This module is deliberately free of React and of every runtime dependency —
 // it is nothing but strings and the type describing them. It is the single
-// source of truth for all THREE gate surfaces:
+// source of truth for both gate surfaces:
 //
 //   1. `DemoGate` (this package)                 — app-layer gate, every starter
 //      and fork; the majority of demos.
 //   2. demo-tracker `src/edge-gate-template.ts`  — the generated Netlify edge
-//      function, for edge-gated sites.
-//   3. demo-tracker `src/tracker-snippet.ts`     — the `t.js` in-page overlay.
+//      function, for static sites.
 //
-// Surfaces 2 and 3 live in the demo-tracker service, which is not a React app.
-// They `import` this module directly via the package's React-free
+// Surface 2 lives in the demo-tracker service, which is not a React app. It
+// `import`s this module directly via the package's React-free
 // `@ct-demos/demotools/tracker/gate-copy` subpath export — NOT via the
 // `./tracker` barrel, which re-exports `DemoGate` and would drag the react /
 // react-dom peer deps into a Fastify service. Nothing is copied by hand and no
-// starter or demo overrides any of it, so a wording change here reaches every
-// surface on the next tracker deploy.
+// starter or demo overrides any of it.
 //
 // (This previously said the tracker "can't import from here" and told the next
 // person to mirror the strings by hand in the same session. That was never
 // true — the barrier was only the missing subpath export, and hand-mirroring
-// three copies is exactly how they drift.)
+// copies is exactly how they drift.)
 export interface DemoGateCopy {
   /** Panel heading. */
   title: string;

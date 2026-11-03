@@ -512,19 +512,18 @@ selects the base, and `copy` overrides merge over whichever base was chosen.
 Only the noun changes — both sets keep the whose-credential hints, because the
 account-login misreading is just as likely on a room.
 
-**Three surfaces, one wording, one import.** All three read the same module:
+**Two surfaces, one wording, one import.** Both read the same module:
 
 | Surface | Lives in | Reaches demos when |
 |---|---|---|
 | `DemoGate` (app gate — most demos) | this package | the demo bumps `@ct-demos/demotools` and redeploys |
 | generated Netlify edge function | demo-tracker `src/edge-gate-template.ts` | the site's edge bundle is **regenerated and redeployed** |
-| `t.js` in-page overlay | demo-tracker `src/tracker-snippet.ts` | immediately — `t.js` is served live |
 
 The tracker imports the strings from the React-free
 **`@ct-demos/demotools/tracker/gate-copy`** subpath export — *not* the `./tracker`
 barrel, which re-exports `DemoGate` and would pull the react/react-dom peer deps
 into a Fastify service. Change the wording here, bump the tracker's dependency,
-and all three surfaces move together.
+and both surfaces move together.
 
 > Until 5.9.0 this section claimed the tracker "cannot import this module" and
 > told you to duplicate the strings by hand in the same session. That was never
