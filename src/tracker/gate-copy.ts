@@ -70,6 +70,10 @@ export interface DemoGateCopy {
   passwordLabel: string;
   /** Small print under the password field: it's ours and it's shared. */
   passwordHint: string;
+  /** Text of the button inside the password field that reveals what was typed. */
+  passwordShow: string;
+  /** The same button while the password is visible. */
+  passwordHide: string;
   submit: string;
   /** Client-side email-shape complaint. */
   emailInvalid: string;
@@ -118,6 +122,8 @@ export const DEMO_GATE_COPY: DemoGateCopy = {
   passwordLabel: 'Shared demo password',
   passwordHint:
     'Not one of your own passwords. Everyone with access uses the same one — ask whoever sent you the link.',
+  passwordShow: 'Show',
+  passwordHide: 'Hide',
   submit: 'Continue',
   emailInvalid: 'Enter a valid email address.',
   error:
@@ -146,6 +152,8 @@ export const EVAL_ROOM_GATE_COPY: DemoGateCopy = {
   passwordLabel: 'Shared access password',
   passwordHint:
     'Not one of your own passwords. Everyone with access uses the same one — ask whoever sent you the link.',
+  passwordShow: 'Show',
+  passwordHide: 'Hide',
   submit: 'Continue',
   emailInvalid: 'Enter a valid email address.',
   error:

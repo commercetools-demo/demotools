@@ -174,7 +174,8 @@ demo consuming the package.
   shared-password gate UI with an optional email field that is the opt-in
   (6.4.0): typing an email records the visit, leaving it blank lets the visitor
   in on the password alone with nothing recorded. The copy names the password
-  as shared ("ask whoever sent the link"), and the small print under the email
+  as shared ("ask whoever sent the link"), a Show/Hide button inside the
+  password field (6.5.0) reveals what was typed, and the small print under the email
   says what the visitor gets for giving it and what giving it records. Under
   that a data note (6.3.0) reads "GDPR compliant · stored in the EU · download
   or erase it any time" and links the tracker's privacy page. Overridable per

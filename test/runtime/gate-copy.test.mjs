@@ -89,7 +89,33 @@ test('open gate renders no password field and can be submitted untouched', () =>
 });
 
 test('closed gate cannot be submitted without the password', () => {
-  assert.match(render().match(/<button[^>]*>/)[0], /disabled/);
+  assert.match(render().match(/<button[^>]*type="submit"[^>]*>/)[0], /disabled/);
+});
+
+test('the password field has a Show button that never submits the form', () => {
+  const html = render();
+  const toggle = html.match(/<button[^>]*id="demo-gate-password-toggle"[^>]*>([^<]*)<\/button>/);
+  assert.ok(toggle, 'the toggle renders next to the password field');
+  assert.match(toggle[0], /type="button"/, 'a submit-type toggle would post the form');
+  assert.equal(toggle[1], 'Show', 'the password starts hidden');
+  assert.match(toggle[0], /aria-controls="demo-gate-password"/);
+  // Its accessible name is its own text plus the field's label, so a screen
+  // reader hears which field it reveals. Both ids have to exist.
+  assert.match(toggle[0], /aria-labelledby="demo-gate-password-toggle demo-gate-password-label"/);
+  assert.match(html, /<label[^>]*id="demo-gate-password-label"/);
+  // Revealed as text, the field must not be auto-capitalised or autocorrected,
+  // or the reveal introduces the typos it exists to catch.
+  const input = html.match(/<input[^>]*id="demo-gate-password"[^>]*>/)[0];
+  assert.match(input, /type="password"/);
+  assert.match(input, /autoCapitalize="none"/);
+  assert.match(input, /autoCorrect="off"/);
+  assert.match(input, /spellCheck="false"/);
+  assert.equal(DEMO_GATE_COPY.passwordHide, 'Hide');
+  assert.equal(EVAL_ROOM_GATE_COPY.passwordShow, 'Show');
+});
+
+test('an open gate has no password field, so no Show button', () => {
+  assert.doesNotMatch(render({ open: true }), /demo-gate-password-toggle/);
 });
 
 test('no demo can reword the consent label or move the privacy link', () => {
